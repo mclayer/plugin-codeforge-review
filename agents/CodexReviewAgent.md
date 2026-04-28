@@ -51,12 +51,12 @@ Codex 플러그인 미설치 시 **모든 리뷰 lane 진행 불가** — Orches
 
 **Packet 누락 검증** (필수 — 미충족 시 즉시 `ESCALATE_PACKET_INCOMPLETE` verdict 반환, Codex 호출 자체 skip, generic fallback 금지 — [ADR-001](../docs/adr/ADR-001-review-agent-unification.md) §결정 4번):
 
-1. **공통 필수 필드**: `lane` · `checklist_path` · `scope_globs` · `category_enum` 존재
+1. **공통 필수 필드**: `contract_version` (== `"1.0"`) · `lane` · `checklist_path` · `scope_globs` · `category_enum` 존재. `contract_version` 누락 또는 `"1.0"`이 아닌 값 → 즉시 `ESCALATE_PACKET_INCOMPLETE` (review_verdict v1 contract enforcement, [ADR-008](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-008-inter-plugin-contract-versioning.md))
 2. **lane↔checklist 일치**: `checklist_path`와 `category_enum`이 packet의 `lane` 값과 동일 lane의 SSOT를 가리켜야 함 (예: `lane=design`인데 `templates/review-checklists/code.md`가 오면 ESCALATE)
 3. **lane-conditional 추가 검증**:
    - `lane=design`: `related_adrs` 또는 Story §3에서 추적 가능한 ADR 입력 ≥ 1. 둘 다 비어 있으면 ESCALATE
    - `lane=code`: `story_key` 필수. Story file §8.5 Impl Manifest를 `Read`로 열 수 없거나 매핑 표가 비어 있으면 ESCALATE
-   - `lane=security`: packet은 1차 layer 결과(Dependabot · CodeQL · Secret Scanning · Push Protection)를 inline 포함, `scope_globs`에 의존성 매니페스트 ≥ 1 포함. 둘 중 하나라도 없으면 findings 본문 첫 줄에 `first-layer-input-missing` 명시(완전 차단은 아니지만 보고에서 결손 표기)
+   - `lane=security`: packet은 1차 layer 결과(Dependabot · CodeQL · Secret Scanning · Push Protection)를 inline 포함 + `scope_globs`에 의존성 매니페스트 ≥ 1 포함. 둘 중 하나라도 부재 시 즉시 `ESCALATE_PACKET_INCOMPLETE` (ADR-001 §결정 4번 invariant policing — fetch 책임은 SecurityTestPL 소유, 워커 비차단 fallback은 silently 약한 보안 lane을 만들 수 있음)
 
 ## 역할
 

@@ -23,6 +23,7 @@ PL은 lane 진입 시 다음 필드를 채운 packet을 워커에 주입한다. 
 
 ```yaml
 review_packet:
+  contract_version: "1.0"                                       # 필수 — review_verdict v1 contract enforcement
   lane: design | code | security                               # 필수
   checklist_path: templates/review-checklists/{design,code,security}.md  # 필수
   scope_globs:                                                  # 필수
@@ -55,6 +56,7 @@ review_packet:
 
 | 필드 | design | code | security |
 |------|:------:|:----:|:--------:|
+| contract_version | ✅ | ✅ | ✅ |
 | lane | ✅ | ✅ | ✅ |
 | checklist_path | ✅ | ✅ | ✅ |
 | scope_globs | ✅ | ✅ | ✅ |
@@ -72,6 +74,21 @@ review_packet:
 
 - 같은 location(파일·라인·섹션·ADR) + 동일 category finding은 1건 병합
 - severity는 두 리뷰 중 **높은 쪽 채택**
+
+### Worker verdict → review_verdict.status 변환
+
+워커는 `verdict: PASS | ISSUES | NO_SHIP | ESCALATE_PACKET_INCOMPLETE` 4종으로 보고 ([ClaudeReviewAgent §보고 형식](../agents/ClaudeReviewAgent.md), [CodexReviewAgent §정규화 보고 스키마](../agents/CodexReviewAgent.md)). PL은 dedup·severity 종합 후 양 워커 결과를 다음 표로 contract status로 변환:
+
+| 양 워커 종합 (dedup 후 P0/P1 카운트 기준) | review_verdict.status |
+|---|---|
+| 두 워커 중 1건 이상 `ESCALATE_PACKET_INCOMPLETE` | (PL은 status 반환 안 함 — packet 정정 후 워커 재 dispatch 의뢰) |
+| 두 워커 모두 `PASS` (또는 `ISSUES` with P0=0, P1=0) | `PASS` |
+| `NO_SHIP` 1건 이상 (즉 P0 ≥ 1) | `FIX` |
+| `ISSUES` + P0=0, P1 ≥ 2 | `FIX` |
+| `ISSUES` + P0=0, P1 = 1 | `FIX_DISCRETIONARY` (PL 재량 — 근거 포함 Orchestrator 전달) |
+| FIX 카운터 lane 한도 초과 | `FIX` 결정 후 PL이 별도 ESCALATE 신호 추가 (lane md FIX 카운터 정책 SSOT) |
+
+본 표가 contract `review_verdict.status` enum과 워커 verdict enum 사이의 유일한 매핑 SSOT. 워커 verdict enum 추가/변경 시 본 표도 동시 갱신 의무.
 
 ### 종합 판정
 
@@ -100,6 +117,15 @@ PL이 verdict packet에 **`mechanical_category`** 필드를 추가해 다음 자
 자격 충족 시 Orchestrator는 DeveloperPL 1차 진단 → ArchitectPL 판정 cycle을 skip하고 직접 fix commit + same-iteration internal verify (다음 Iter 행 안 매김). 분류 잘못이면 다음 review iteration이 P0/P1 발견 → 정상 cycle 회복 (Iter 행 append).
 
 분류 책임자: 각 ReviewPL이 verdict 산출 시 1차 분류. SSOT는 본 절. 각 lane checklist md (`templates/review-checklists/{design,code,security}.md`)는 본 절 참조만 (재정의 금지).
+
+### P3 / unclassified severity 처리
+
+워커는 P3·unclassified를 emit ([ClaudeReviewAgent §분류 규칙](../agents/ClaudeReviewAgent.md), [CodexReviewAgent §변환 규칙](../agents/CodexReviewAgent.md))하지만 contract `review_verdict.findings[].severity`는 `P0|P1|P2`만 허용 ([review-verdict-v1 §3](https://github.com/mclayer/plugin-codeforge/blob/main/docs/inter-plugin-contracts/review-verdict-v1.md#L91-L92)). PL이 verdict로 변환 시:
+
+- `P3` → `P2`로 downgrade 후 `review_verdict.findings[]`에 emit
+- `unclassified` → 워커 보고 원문에서 추가 근거 추출 시도. 추출 가능하면 `P2`, 불가능하면 `findings[]`에서 drop하고 `summary_for_story_section_9`에 1줄 ("워커 unclassified N건 drop") 기록
+
+본 변환은 PL 의무 — 미적용 시 core가 contract enum 위반으로 verdict 거부.
 
 ### Noise 분류
 
@@ -161,6 +187,42 @@ PL은 severity 종합 후 **즉시 Orchestrator에 verdict return** (PASS / FIX 
 - 이전 시도: {iteration별 수정 내용 요약 — Story file §10 인용}
 - 권장: 사용자 지시 대기
 ```
+
+### 5.4 Typed verdict 출력 (contract-required)
+
+§5.1-5.3의 PASS/FIX/ESCALATE 한글 블록은 사람용 보고 (Orchestrator 콘솔·Story §9.x append). **추가로** 아래 YAML을 동시 emit — 이것이 review_verdict v1 contract surface ([review-verdict-v1 §3](https://github.com/mclayer/plugin-codeforge/blob/main/docs/inter-plugin-contracts/review-verdict-v1.md#L75-L111) SSOT). 둘 중 하나라도 누락 시 core가 verdict 거부 + ESCALATE.
+
+```yaml
+review_verdict:
+  contract_version: "1.0"          # 필수 — packet contract_version과 일치
+  lane: design | code | security   # 필수 — packet과 일치
+  story_key: <STORY_KEY>           # 필수 — packet과 일치
+  iteration: <int>                 # 필수 — Story §10 FIX Ledger 현재 카운터 값
+
+  status: PASS | FIX | FIX_DISCRETIONARY  # 필수 — §3 Worker verdict 변환표 적용
+
+  findings:                         # 필수 — array, 빈 배열 허용
+    - severity: P0 | P1 | P2        # 필수 — P3/unclassified는 §3 규정에 따라 P2 downgrade 또는 drop
+      category: <packet category_enum 중 하나>
+      file: <path>                  # 필수 — 비-file finding 시 0
+      line: <int>                   # 선택 — 0 허용
+      evidence: <markdown>           # 필수 — 위치 인용 + 위반 근거
+      suggestion: <markdown>         # 필수 — 수정 방향 (코드 patch 아님)
+
+  summary_for_story_section_9: |    # 필수 — core(DocsAgent)가 Story §9 append
+    <PL 종합 보고 — finding count + 결정 근거 + iteration 추세>
+
+  summary_for_pr_comment: |         # 필수 — core(DocsAgent)가 phase prefix 적용해 PR comment 게시
+    <≤30 줄 요약 — 상세는 §9 참조 링크>
+
+  next_gate_label:                  # 필수 — null 허용
+    # status=PASS + lane=design   → gate:design-review-pass
+    # status=PASS + lane=security → gate:security-test-pass
+    # status=PASS + lane=code     → null (구현 리뷰 PASS 라벨 부재 — 다음 lane 트리거만)
+    # status=FIX | FIX_DISCRETIONARY → null
+```
+
+`mechanical_category` 필드는 본 v1.0 contract에 정의되지 않음 — 본 plugin 내부 §3 fast-path 분류용 필드로만 PL → Orchestrator 사이드채널. core repo가 v1.1로 schema에 추가하기 전까지 contract surface 외 (Bundle 2 작업 — gap #4).
 
 ---
 
