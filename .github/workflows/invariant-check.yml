@@ -218,3 +218,47 @@ jobs:
 
           print("✓ Severity overrides count + breakdown parity: 3 lanes × SSOT/PL match")
           EOF
+
+      - name: Packet contract_version presence (3 PL × packet YAML)
+        run: |
+          python3 <<'EOF'
+          """
+          3 PL md의 review_packet: YAML 블록에 `contract_version: "1.0"` 필수.
+          review_verdict v1 contract (codeforge core SSOT) 준수 enforcement.
+          """
+          import re
+          import sys
+          from pathlib import Path
+
+          PL_FILES = [
+              "agents/DesignReviewPLAgent.md",
+              "agents/CodeReviewPLAgent.md",
+              "agents/SecurityTestPLAgent.md",
+          ]
+          errors = []
+          for path in PL_FILES:
+              text = Path(path).read_text(encoding="utf-8")
+              m = re.search(
+                  r"```ya?ml\s*\nreview_packet:[\s\S]*?\n```",
+                  text,
+              )
+              if not m:
+                  errors.append(f"{path}: review_packet YAML 블록 부재")
+                  continue
+              if not re.search(
+                  r'^\s*contract_version:\s*"1\.0"\s*$',
+                  m.group(0),
+                  re.MULTILINE,
+              ):
+                  errors.append(
+                      f'{path}: review_packet에 contract_version: "1.0" 부재'
+                  )
+          if errors:
+              print(
+                  f"::error::Packet contract_version invariant 실패 ({len(errors)} drift)"
+              )
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+          print("✓ Packet contract_version: \"1.0\" present in all 3 PL packets")
+          EOF

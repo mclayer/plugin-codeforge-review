@@ -23,6 +23,7 @@ PL은 lane 진입 시 다음 필드를 채운 packet을 워커에 주입한다. 
 
 ```yaml
 review_packet:
+  contract_version: "1.0"                                       # 필수 — review_verdict v1 contract enforcement
   lane: design | code | security                               # 필수
   checklist_path: templates/review-checklists/{design,code,security}.md  # 필수
   scope_globs:                                                  # 필수
@@ -55,6 +56,7 @@ review_packet:
 
 | 필드 | design | code | security |
 |------|:------:|:----:|:--------:|
+| contract_version | ✅ | ✅ | ✅ |
 | lane | ✅ | ✅ | ✅ |
 | checklist_path | ✅ | ✅ | ✅ |
 | scope_globs | ✅ | ✅ | ✅ |

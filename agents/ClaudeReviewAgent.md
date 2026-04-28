@@ -42,7 +42,7 @@ ADR 근거: [ADR-001](../docs/adr/ADR-001-review-agent-unification.md) — 3 lan
 
 **Packet 누락 검증** (필수 — 미충족 시 즉시 `ESCALATE_PACKET_INCOMPLETE` 반환, generic fallback 금지 — [ADR-001](../docs/adr/ADR-001-review-agent-unification.md) §결정 4번):
 
-1. **공통 필수 필드**: `lane` · `checklist_path` · `scope_globs` · `category_enum` 존재
+1. **공통 필수 필드**: `contract_version` (== `"1.0"`) · `lane` · `checklist_path` · `scope_globs` · `category_enum` 존재. `contract_version` 누락 또는 `"1.0"`이 아닌 값 → 즉시 `ESCALATE_PACKET_INCOMPLETE` (review_verdict v1 contract enforcement, [ADR-008](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-008-inter-plugin-contract-versioning.md))
 2. **lane↔checklist 일치**: `checklist_path`와 `category_enum`이 packet의 `lane` 값과 동일 lane의 SSOT를 가리켜야 함 (예: `lane=design`인데 `templates/review-checklists/code.md`가 오면 ESCALATE)
 3. **lane-conditional 추가 검증**:
    - `lane=design`: `related_adrs` 또는 Story §3에서 추적 가능한 ADR 입력 ≥ 1. 둘 다 비어 있으면 ESCALATE

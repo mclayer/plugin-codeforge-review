@@ -33,6 +33,7 @@ ADR 근거: [ADR-001](../docs/adr/ADR-001-review-agent-unification.md).
 
 ```yaml
 review_packet:
+  contract_version: "1.0"
   lane: code
   checklist_path: templates/review-checklists/code.md
   scope_globs:
