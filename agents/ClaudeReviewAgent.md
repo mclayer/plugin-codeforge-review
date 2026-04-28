@@ -47,7 +47,7 @@ ADR 근거: [ADR-001](../docs/adr/ADR-001-review-agent-unification.md) — 3 lan
 3. **lane-conditional 추가 검증**:
    - `lane=design`: `related_adrs` 또는 Story §3에서 추적 가능한 ADR 입력 ≥ 1. 둘 다 비어 있으면 ESCALATE
    - `lane=code`: `story_key` 필수. Story file §8.5 Impl Manifest를 `Read`로 열 수 없거나 매핑 표가 비어 있으면 ESCALATE
-   - `lane=security`: packet은 1차 layer 결과(Dependabot · CodeQL · Secret Scanning · Push Protection)를 inline 포함, `scope_globs`에 의존성 매니페스트 ≥ 1 포함. 둘 중 하나라도 없으면 findings 본문 첫 줄에 `first-layer-input-missing` 명시(완전 차단은 아니지만 보고에서 결손 표기)
+   - `lane=security`: packet은 1차 layer 결과(Dependabot · CodeQL · Secret Scanning · Push Protection)를 inline 포함 + `scope_globs`에 의존성 매니페스트 ≥ 1 포함. 둘 중 하나라도 부재 시 즉시 `ESCALATE_PACKET_INCOMPLETE` (ADR-001 §결정 4번 invariant policing — fetch 책임은 SecurityTestPL 소유, 워커 비차단 fallback은 silently 약한 보안 lane을 만들 수 있음)
 
 ## 역할
 
@@ -114,7 +114,7 @@ P1 품질 finding은 가능하면 `dup-local`(단일 파일·함수) 또는 `dup
 | `scope_globs`가 0건 매칭 | 추정으로 finding 채우지 말고 `ESCALATE_PACKET_INCOMPLETE` 반환 |
 | packet이 가리키는 핵심 파일(`checklist_path`·Story file·ADR 경로) 부재 | `ESCALATE_PACKET_INCOMPLETE` 반환 |
 | 보안 lane WebSearch/WebFetch 실패·네트워크 차단 | 재시도 금지, 로컬 코드·매니페스트·1차 layer 결과만으로 계속 진행. 해당 finding `body`에 결손 명시 |
-| 보안 lane 1차 layer 결과 inline 부재 | findings 본문 첫 줄에 `first-layer-input-missing` 명시(완전 차단 아님 — packet 검증 §3 참조) |
+| 보안 lane 1차 layer 결과 inline 부재 또는 의존성 매니페스트 0건 | `ESCALATE_PACKET_INCOMPLETE` 반환 (SecurityTestPL fetch 의무 위반 — silently 약화 방지) |
 | Codex 플러그인 미설치 (peer 워커 부재) | 자체 검증은 정상 수행, 결과 반환. lane 진행 차단은 Orchestrator가 별도 판정 |
 
 ## 보고 형식 (CodexReviewAgent와 동일 정규화 스키마)

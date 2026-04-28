@@ -56,7 +56,7 @@ Codex 플러그인 미설치 시 **모든 리뷰 lane 진행 불가** — Orches
 3. **lane-conditional 추가 검증**:
    - `lane=design`: `related_adrs` 또는 Story §3에서 추적 가능한 ADR 입력 ≥ 1. 둘 다 비어 있으면 ESCALATE
    - `lane=code`: `story_key` 필수. Story file §8.5 Impl Manifest를 `Read`로 열 수 없거나 매핑 표가 비어 있으면 ESCALATE
-   - `lane=security`: packet은 1차 layer 결과(Dependabot · CodeQL · Secret Scanning · Push Protection)를 inline 포함, `scope_globs`에 의존성 매니페스트 ≥ 1 포함. 둘 중 하나라도 없으면 findings 본문 첫 줄에 `first-layer-input-missing` 명시(완전 차단은 아니지만 보고에서 결손 표기)
+   - `lane=security`: packet은 1차 layer 결과(Dependabot · CodeQL · Secret Scanning · Push Protection)를 inline 포함 + `scope_globs`에 의존성 매니페스트 ≥ 1 포함. 둘 중 하나라도 부재 시 즉시 `ESCALATE_PACKET_INCOMPLETE` (ADR-001 §결정 4번 invariant policing — fetch 책임은 SecurityTestPL 소유, 워커 비차단 fallback은 silently 약한 보안 lane을 만들 수 있음)
 
 ## 역할
 
