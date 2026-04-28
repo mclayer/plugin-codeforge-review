@@ -11,13 +11,28 @@ permissions:
     - Write(.claude-work/doc-queue/**)
     - Bash(mkdir -p .claude-work/doc-queue*)
     - Bash(ls .claude-work/doc-queue*)
+    # CFP-35 v2 self-write — Story §9 + GitHub comment + gate label
+    - Edit(docs/stories/**)
+    - mcp__github__add_issue_comment
+    - mcp__github__issue_write
   deny:
     - Edit(src/**)
     - Write(src/**)
     - Edit(tests/**)
     - Write(tests/**)
-    - Edit(docs/**)
-    - Write(docs/**)
+    # CFP-35 v2 — docs/stories/** 만 self-write 허용, 다른 owner 영역은 deny
+    - Edit(docs/change-plans/**)
+    - Edit(docs/adr/**)
+    - Edit(docs/domain-knowledge/**)
+    - Edit(docs/retros/**)
+    - Edit(docs/inter-plugin-contracts/**)
+    - Edit(docs/superpowers/**)
+    - Write(docs/change-plans/**)
+    - Write(docs/adr/**)
+    - Write(docs/domain-knowledge/**)
+    - Write(docs/retros/**)
+    - Write(docs/inter-plugin-contracts/**)
+    - Write(docs/superpowers/**)
 ---
 
 **설계 리뷰 레인 PL**. ArchitectPLAgent가 설계 lane 검수(Phase 3)를 완료한 직후 Orchestrator가 본 에이전트를 스폰한다 (Change Plan 본체는 ArchitectAgent (chief author)가 작성, PL이 검수 통과시킴). 공통 워커 **ClaudeReviewAgent + CodexReviewAgent**에 lane=design packet을 주입해 병렬 리뷰 보고를 수집·종합한다.

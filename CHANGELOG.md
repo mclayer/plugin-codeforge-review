@@ -4,6 +4,36 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
+## [1.0.0] - 2026-04-29
+
+### CFP-35 (codeforge ζ arc) — review_verdict v2 retrofit (BREAKING)
+
+ζ arc 첫 lane plugin self-write 검증 단계 (codeforge parent spec CFP-31 §5.5). PL이 Story §9 + GitHub comment + gate label 을 자체 write — DocsAgent 경유 폐기.
+
+### Changed (BREAKING)
+
+- `agents/{Design,Code,SecurityTest}ReviewPLAgent.md` 권한 확장:
+  - allow: `Edit(docs/stories/**)`, `mcp__github__add_issue_comment`, `mcp__github__issue_write`
+  - deny: `docs/{change-plans,adr,domain-knowledge,retros,inter-plugin-contracts,superpowers}/**` 명시 (이전 `docs/**` 광역 deny → narrow path-scoped)
+- `templates/review-pl-base.md` §5.4 — review_verdict schema v1 → v2 (writes_completed audit + summary_for_* 제거)
+- `templates/review-pl-base.md` §5.5 — Self-write 절차 신설 (4 steps + Lane → gate label / next phase 매핑)
+
+### Added
+
+- `docs/inter-plugin-contracts/review-verdict-v2.md` — canonical v2 contract SSOT
+- `.claude-plugin/plugin.json` v0.3.0 → v1.0.0 BREAKING
+
+### Why
+
+codeforge ζ arc parent spec CFP-31 §5.5: 첫 lane plugin self-write 검증으로 review v2 retrofit 채택. 이미 plugin이라 코드 이동 0, contract revise만으로 패턴 검증. 이후 codeforge-pmo (CFP-36) 등 lane plugin도 같은 패턴 따름.
+
+### Compatibility
+
+- **Wire**: codeforge core 가 v2 verdict 처리 (v0.22.0+ 부터). v0.21 이하 codeforge는 v1 verdict 기대 → 호환 불가
+- **Migration**: codeforge 와 codeforge-review 동시 bump 의무 — codeforge v0.22.0 + codeforge-review v1.0.0 짝
+- **Side-by-side v1 + v2**: 불가능. v1 contract 는 wrapper에서 Deprecated 표기 후 archive 예정 (6 CFP 후)
+- **Marketplace sync 의무**: 두 plugin 모두 동시 sync 필수
+
 ## [0.3.0] - 2026-04-29
 
 ### Changed
