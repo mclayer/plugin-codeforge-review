@@ -188,20 +188,25 @@ PL은 severity 종합 후 **즉시 Orchestrator에 verdict return** (PASS / FIX 
 - 권장: 사용자 지시 대기
 ```
 
-### 5.4 Typed verdict 출력 (contract-required)
+### 5.4 Typed verdict 출력 (contract-required v2.0 — CFP-35부터)
 
-§5.1-5.3의 PASS/FIX/ESCALATE 한글 블록은 사람용 보고 (Orchestrator 콘솔·Story §9.x append). **추가로** 아래 YAML을 동시 emit — 이것이 review_verdict v1 contract surface ([review-verdict-v1 §3](https://github.com/mclayer/plugin-codeforge/blob/main/docs/inter-plugin-contracts/review-verdict-v1.md#L75-L111) SSOT). 둘 중 하나라도 누락 시 core가 verdict 거부 + ESCALATE.
+§5.1-5.3의 PASS/FIX/ESCALATE 한글 블록은 사람용 보고. **CFP-35 ζ arc retrofit 부터** PL이 직접 write 후 typed verdict emit. v2 contract surface ([review-verdict-v2.md §3](../docs/inter-plugin-contracts/review-verdict-v2.md) SSOT).
+
+**v1 → v2 BREAKING 변경**:
+- `summary_for_story_section_9` / `summary_for_pr_comment` / `next_gate_label` **제거** — PL이 직접 write (§5.5 절차)
+- `writes_completed` **신설** — PL self-write 결과 audit
+- contract_version "1.0" → "2.0"
 
 ```yaml
 review_verdict:
-  contract_version: "1.0"          # 필수 — packet contract_version과 일치
+  contract_version: "2.0"          # 필수 — v2부터 self-write
   lane: design | code | security   # 필수 — packet과 일치
   story_key: <STORY_KEY>           # 필수 — packet과 일치
   iteration: <int>                 # 필수 — Story §10 FIX Ledger 현재 카운터 값
 
   status: PASS | FIX | FIX_DISCRETIONARY  # 필수 — §3 Worker verdict 변환표 적용
 
-  findings:                         # 필수 — array, 빈 배열 허용
+  findings:                         # 필수 — array, 빈 배열 허용 (FIX 라우팅 input — Orchestrator/ArchitectPL 소비)
     - severity: P0 | P1 | P2        # 필수 — P3/unclassified는 §3 규정에 따라 P2 downgrade 또는 drop
       category: <packet category_enum 중 하나>
       file: <path>                  # 필수 — 비-file finding 시 0
@@ -209,20 +214,30 @@ review_verdict:
       evidence: <markdown>           # 필수 — 위치 인용 + 위반 근거
       suggestion: <markdown>         # 필수 — 수정 방향 (코드 patch 아님)
 
-  summary_for_story_section_9: |    # 필수 — core(DocsAgent)가 Story §9 append
-    <PL 종합 보고 — finding count + 결정 근거 + iteration 추세>
-
-  summary_for_pr_comment: |         # 필수 — core(DocsAgent)가 phase prefix 적용해 PR comment 게시
-    <≤30 줄 요약 — 상세는 §9 참조 링크>
-
-  next_gate_label:                  # 필수 — null 허용
-    # status=PASS + lane=design   → gate:design-review-pass
-    # status=PASS + lane=security → gate:security-test-pass
-    # status=PASS + lane=code     → null (구현 리뷰 PASS 라벨 부재 — 다음 lane 트리거만)
-    # status=FIX | FIX_DISCRETIONARY → null
+  writes_completed:                 # 필수 — PL self-write 결과 audit (CFP-35 신설)
+    story_section_9: <bool>         # 필수 — docs/stories/<KEY>.md §9 append 완료
+    phase_comment: <bool>           # 필수 — GitHub Issue/PR comment with phase prefix 게시 완료
+    gate_label_attached: <bool>     # 필수 — gate:*-pass 라벨 부착 (PASS only, 그 외 false)
+    phase_label_transitioned: <bool> # 필수 — phase:* 다음 단계로 전환 (PASS only, 그 외 false)
 ```
 
-`mechanical_category` 필드는 본 v1.0 contract에 정의되지 않음 — 본 plugin 내부 §3 fast-path 분류용 필드로만 PL → Orchestrator 사이드채널. core repo가 v1.1로 schema에 추가하기 전까지 contract surface 외 (Bundle 2 작업 — gap #4).
+`mechanical_category` 필드는 본 contract에 정의되지 않음 — plugin 내부 §3 fast-path 분류용 필드로만 PL → Orchestrator 사이드채널.
+
+### 5.5 Self-write 절차 (CFP-35 v2부터)
+
+PL은 verdict emit 전에 다음을 직접 수행한다 (DocsAgent 경유 없음):
+
+1. **Story §9 append** — `Edit(docs/stories/<STORY_KEY>.md)` 로 §9에 PL 종합 보고 + finding count + iteration 추세 추가
+2. **Phase comment 게시** — `mcp__github__add_issue_comment` 로 `[<phase>-리뷰]` 또는 `[보안-테스트]` prefix 코멘트 (요약 + Story §9 cross-ref)
+3. **PASS 시**: `mcp__github__issue_write(action='add_labels', labels=['gate:<lane>-pass'])` 로 gate 라벨 부착 + 현재 phase 라벨 → 다음 phase 라벨 전환
+4. **FIX/FIX_DISCRETIONARY 시**: gate 라벨·phase 전환 안 함 (Orchestrator가 §10 append 후 phase:구현 또는 phase:설계로 회귀시킴)
+
+각 단계 결과를 `writes_completed` 에 boolean 으로 기록. 실패 시 ESCALATE_PACKET_INCOMPLETE return + Orchestrator 수동 복구 의뢰.
+
+**Lane → gate label / next phase 매핑**:
+- `lane=design` PASS → `gate:design-review-pass` + `phase:설계-리뷰` → `phase:구현`
+- `lane=code` PASS → 게이트 라벨 없음 + `phase:구현-리뷰` → `phase:구현-테스트`
+- `lane=security` PASS → `gate:security-test-pass` + `phase:보안-테스트` → (Story 완료, Phase 2 PR mergeable)
 
 ---
 
