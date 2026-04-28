@@ -188,6 +188,42 @@ PL은 severity 종합 후 **즉시 Orchestrator에 verdict return** (PASS / FIX 
 - 권장: 사용자 지시 대기
 ```
 
+### 5.4 Typed verdict 출력 (contract-required)
+
+§5.1-5.3의 PASS/FIX/ESCALATE 한글 블록은 사람용 보고 (Orchestrator 콘솔·Story §9.x append). **추가로** 아래 YAML을 동시 emit — 이것이 review_verdict v1 contract surface ([review-verdict-v1 §3](https://github.com/mclayer/plugin-codeforge/blob/main/docs/inter-plugin-contracts/review-verdict-v1.md#L75-L111) SSOT). 둘 중 하나라도 누락 시 core가 verdict 거부 + ESCALATE.
+
+```yaml
+review_verdict:
+  contract_version: "1.0"          # 필수 — packet contract_version과 일치
+  lane: design | code | security   # 필수 — packet과 일치
+  story_key: <STORY_KEY>           # 필수 — packet과 일치
+  iteration: <int>                 # 필수 — Story §10 FIX Ledger 현재 카운터 값
+
+  status: PASS | FIX | FIX_DISCRETIONARY  # 필수 — §3 Worker verdict 변환표 적용
+
+  findings:                         # 필수 — array, 빈 배열 허용
+    - severity: P0 | P1 | P2        # 필수 — P3/unclassified는 §3 규정에 따라 P2 downgrade 또는 drop
+      category: <packet category_enum 중 하나>
+      file: <path>                  # 필수 — 비-file finding 시 0
+      line: <int>                   # 선택 — 0 허용
+      evidence: <markdown>           # 필수 — 위치 인용 + 위반 근거
+      suggestion: <markdown>         # 필수 — 수정 방향 (코드 patch 아님)
+
+  summary_for_story_section_9: |    # 필수 — core(DocsAgent)가 Story §9 append
+    <PL 종합 보고 — finding count + 결정 근거 + iteration 추세>
+
+  summary_for_pr_comment: |         # 필수 — core(DocsAgent)가 phase prefix 적용해 PR comment 게시
+    <≤30 줄 요약 — 상세는 §9 참조 링크>
+
+  next_gate_label:                  # 필수 — null 허용
+    # status=PASS + lane=design   → gate:design-review-pass
+    # status=PASS + lane=security → gate:security-test-pass
+    # status=PASS + lane=code     → null (구현 리뷰 PASS 라벨 부재 — 다음 lane 트리거만)
+    # status=FIX | FIX_DISCRETIONARY → null
+```
+
+`mechanical_category` 필드는 본 v1.0 contract에 정의되지 않음 — 본 plugin 내부 §3 fast-path 분류용 필드로만 PL → Orchestrator 사이드채널. core repo가 v1.1로 schema에 추가하기 전까지 contract surface 외 (Bundle 2 작업 — gap #4).
+
 ---
 
 ## 6. Escalation 경로 (FIX 트리거 시)
