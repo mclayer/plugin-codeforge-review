@@ -4,7 +4,7 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
-## [Unreleased]
+## [0.2.0] - 2026-04-28
 
 ### Added
 

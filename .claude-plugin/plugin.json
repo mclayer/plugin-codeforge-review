@@ -1,6 +1,6 @@
 {
   "name": "codeforge-review",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "codeforge core의 lane-agnostic review subsystem 추출 plugin (3 PL + 2 worker + base + 3 checklist). codeforge core 의존 — 단독 동작 불가. ADR-001 통합 결정 + CFP-29 Phase 1 추출.",
   "author": {
     "name": "Josh"
