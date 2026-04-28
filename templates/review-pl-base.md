@@ -118,6 +118,15 @@ PL이 verdict packet에 **`mechanical_category`** 필드를 추가해 다음 자
 
 분류 책임자: 각 ReviewPL이 verdict 산출 시 1차 분류. SSOT는 본 절. 각 lane checklist md (`templates/review-checklists/{design,code,security}.md`)는 본 절 참조만 (재정의 금지).
 
+### P3 / unclassified severity 처리
+
+워커는 P3·unclassified를 emit ([ClaudeReviewAgent §분류 규칙](../agents/ClaudeReviewAgent.md), [CodexReviewAgent §변환 규칙](../agents/CodexReviewAgent.md))하지만 contract `review_verdict.findings[].severity`는 `P0|P1|P2`만 허용 ([review-verdict-v1 §3](https://github.com/mclayer/plugin-codeforge/blob/main/docs/inter-plugin-contracts/review-verdict-v1.md#L91-L92)). PL이 verdict로 변환 시:
+
+- `P3` → `P2`로 downgrade 후 `review_verdict.findings[]`에 emit
+- `unclassified` → 워커 보고 원문에서 추가 근거 추출 시도. 추출 가능하면 `P2`, 불가능하면 `findings[]`에서 drop하고 `summary_for_story_section_9`에 1줄 ("워커 unclassified N건 drop") 기록
+
+본 변환은 PL 의무 — 미적용 시 core가 contract enum 위반으로 verdict 거부.
+
 ### Noise 분류
 
 - 본 PL 1차 `valid/noise` 분류
