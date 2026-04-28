@@ -75,6 +75,21 @@ review_packet:
 - 같은 location(파일·라인·섹션·ADR) + 동일 category finding은 1건 병합
 - severity는 두 리뷰 중 **높은 쪽 채택**
 
+### Worker verdict → review_verdict.status 변환
+
+워커는 `verdict: PASS | ISSUES | NO_SHIP | ESCALATE_PACKET_INCOMPLETE` 4종으로 보고 ([ClaudeReviewAgent §보고 형식](../agents/ClaudeReviewAgent.md), [CodexReviewAgent §정규화 보고 스키마](../agents/CodexReviewAgent.md)). PL은 dedup·severity 종합 후 양 워커 결과를 다음 표로 contract status로 변환:
+
+| 양 워커 종합 (dedup 후 P0/P1 카운트 기준) | review_verdict.status |
+|---|---|
+| 두 워커 중 1건 이상 `ESCALATE_PACKET_INCOMPLETE` | (PL은 status 반환 안 함 — packet 정정 후 워커 재 dispatch 의뢰) |
+| 두 워커 모두 `PASS` (또는 `ISSUES` with P0=0, P1=0) | `PASS` |
+| `NO_SHIP` 1건 이상 (즉 P0 ≥ 1) | `FIX` |
+| `ISSUES` + P0=0, P1 ≥ 2 | `FIX` |
+| `ISSUES` + P0=0, P1 = 1 | `FIX_DISCRETIONARY` (PL 재량 — 근거 포함 Orchestrator 전달) |
+| FIX 카운터 lane 한도 초과 | `FIX` 결정 후 PL이 별도 ESCALATE 신호 추가 (lane md FIX 카운터 정책 SSOT) |
+
+본 표가 contract `review_verdict.status` enum과 워커 verdict enum 사이의 유일한 매핑 SSOT. 워커 verdict enum 추가/변경 시 본 표도 동시 갱신 의무.
+
 ### 종합 판정
 
 | 조건 | 판정 |
