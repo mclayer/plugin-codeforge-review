@@ -138,7 +138,7 @@ PL이 verdict packet에 **`mechanical_category`** 필드를 추가해 다음 자
 ## 4. FIX 카운터 SSOT
 
 - **카운터 SSOT** = `docs/stories/<KEY>.md` §10 "FIX Ledger" (GitHub Issue 라벨 `fix:<레인>-retry`는 보조 지표)
-- PL이 FIX 판정 시 Orchestrator 경유 DocsAgent에 "§10에 새 행 추가" 의뢰
+- PL이 FIX 판정 시 `verdict.status=FIX` 반환만 — §10 FIX Ledger append 는 codeforge core Orchestrator 단독 책임 (CFP-32 monopoly · `fix-event-v1` contract)
 - §10 commit → `fix-ledger-sync.yml` Action이 자동 (1) Issue comment `[FIX #N]` mirror, (2) `fix:<레인>-retry` 라벨 부착
 - "현재 사이클" count = §10 RESET 마커 이후 iteration 합산
 
@@ -265,7 +265,7 @@ FIX → Orchestrator → DeveloperPLAgent 1차 원인 진단 → ArchitectPLAgen
 
 ## 7. 이력 영속화 (Story file §9.x)
 
-레인 iteration 종료 시 결과 요약을 Orchestrator 경유 DocsAgent에 의뢰 — Story file §9의 lane별 블록에 누적. 섹션 매핑은 각 PL md에서 명시.
+레인 iteration 종료 시 결과 요약을 Story file §9의 lane별 블록에 누적. 자체 write 권한이 있는 경우(v2 contract — §5.5 참조) PL이 직접 append하고, 그 외 write 책임 분담은 각 lane plugin 의 CLAUDE.md `Self-write 책임` 표 + codeforge wrapper [CLAUDE.md](https://github.com/mclayer/plugin-codeforge/blob/main/CLAUDE.md) `오케스트레이션 규칙` 참조. 섹션 매핑은 각 PL md에서 명시.
 
 ---
 
@@ -296,4 +296,4 @@ FIX → Orchestrator → DeveloperPLAgent 1차 원인 진단 → ArchitectPLAgen
 
 ## 11. 문서화 표준
 
-GitHub Issue/PR/docs write 권한 없음. 모든 문서화는 Orchestrator 경유 DocsAgent가 기록. 표준은 [`agents/DocsAgent.md`](../agents/DocsAgent.md) SSOT.
+GitHub Issue/PR/docs write 책임 분담은 각 lane plugin 의 CLAUDE.md `Self-write 책임` 표 + codeforge wrapper [CLAUDE.md](https://github.com/mclayer/plugin-codeforge/blob/main/CLAUDE.md) `오케스트레이션 규칙` 참조. v2 contract (CFP-35+) 에서는 PL이 직접 write — 상세는 §5.5 Self-write 절차.
