@@ -1,0 +1,26 @@
+name: Code-affecting task (Phase 2 PR target)
+description: Story 가 internal-docs 에 있고 plugin repo 측 코드 변경 필요한 작업 (codeforge-review)
+title: "[Phase 2] "
+labels: ["type:story", "phase:구현"]
+body:
+  - type: input
+    id: story_uri
+    attributes:
+      label: Linked Story URI (internal-docs)
+      description: 'e.g. https://github.com/mclayer/codeforge-internal-docs/blob/main/review/stories/<KEY>.md'
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Code change scope summary
+      description: Plugin repo 측 변경 파일 / 모듈 / lane plugin owner path 요약
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ### Reminder
+        - Story 본문은 internal-docs Story file SSOT — 본 Issue 에는 코드 변경 scope 만 기록
+        - Phase 2 PR body 에 `story_uri: <URL>` frontmatter 포함 → `phase-gate-mergeable.yml` 가 cross-repo fetch
+        - PR merge 시 Story file frontmatter `story_issues[]` 도 internal-docs 측에서 close mirror
