@@ -100,7 +100,7 @@ design document review for docs/change-plans/<slug>.md (story: <STORY_KEY>):
 Report each finding with severity [P0]/[P1]/[P2]/[P3], category from {adr-mismatch,
 design-completeness, mapper-refactor-balance, implementability, test-contract,
 section-missing, security-design, data-migration, api-compatibility, observability, slo-missing}, location as path:section, ADR reference where applicable.
-Auto-P0: ADR violation, §8 missing, §3-6 sections missing, §7 보안 설계 누락 또는 §7.6 N/A 사유 부재, §11 데이터 마이그레이션 누락 또는 §11.6 N/A 사유 부재, API breaking without versioning (public/SLA-bound), boundary-component without observability decisions, public/SLA-bound service without SLO.
+Auto-P0: ADR violation, §8 missing, §3-6 sections missing, §7 보안 설계 누락, §7.4 운영 리스크 누락 또는 N/A 사유 부재 (CFP-46 / ADR-014), §7.7 N/A 사유 부재, §11 데이터 마이그레이션 누락, §11.6 Idempotency 누락 또는 N/A 사유 부재 (CFP-46 / ADR-014), §11.7 N/A 사유 부재, API breaking without versioning (public/SLA-bound), boundary-component without observability decisions, public/SLA-bound service without SLO.
 ```
 
 #### lane=code
