@@ -12,10 +12,6 @@ permissions:
     - Write(.claude-work/doc-queue/**)
     - Bash(mkdir -p .claude-work/doc-queue*)
     - Bash(ls .claude-work/doc-queue*)
-    # CFP-35 v2 self-write — Story §9 + GitHub comment + gate label
-    - Edit(docs/stories/**)
-    - mcp__github__add_issue_comment
-    - mcp__github__issue_write
   deny:
     - Edit(src/**)
     - Write(src/**)
@@ -113,12 +109,20 @@ review_packet:
 
 PL 1차 진단 → DeveloperPL 재진단 → ArchitectPLAgent 최종 판정.
 
-## 다음 게이트 (PASS 시)
+## 다음 게이트 (CFP-61 부터)
 
-- DocsAgent가 `gate:security-test-pass` 라벨 부착
-- Phase 2 PR mergeable → merge → "Closes #<Story Issue>" → Issue 자동 close
-- PMOAgent 회고 트리거
-- Story file §9.4 "보안 테스트 Iteration N" 누적
+PL은 evidence + `pl_recommendation` (advisory) 만 생성한다. PL은 다음 게이트 트리거 또는 Story / GitHub 영속화를 수행하지 않는다.
+
+**Orchestrator post-Sonnet** 이 모든 최종 상태 변경을 처리한다:
+- decision-packet v2.1 작성 (trigger=review-verdict, review_lane_context populated)
+- Sonnet call (Agent tool with model:sonnet)
+- Story §9.4 append (보안 테스트 iteration result)
+- GitHub Issue/PR comment ([보안-테스트] prefix)
+- gate:security-test-pass label + phase:보안-테스트 → Story 완료 전환 (PASS 시) + Phase 2 PR mergeable
+- Story §10 FIX Ledger append (FIX 시) + DeveloperPL+ArchitectPL parallel diagnosis spawn
+- PMOAgent 회고 트리거 (PASS + Phase 2 PR merge 후)
+
+PL의 책임 끝 = `pl_recommendation` 작성 후 Orchestrator return. SSOT: ADR-022 §결정 4 + spec §4.3 5-step algorithm.
 
 ## Escalation 경로 (FIX 시)
 
@@ -130,7 +134,7 @@ FIX → Orchestrator → DeveloperPL 1차 원인 진단 → ArchitectPLAgent 최
 
 ## 보고 형식 추가 (base §5 외 lane-specific)
 
-- PASS: `다음 단계: Orchestrator → DocsAgent (gate:security-test-pass 라벨 → Phase 2 PR mergeable → merge → Issue auto-close) + PMOAgent (회고)`
+- PASS: `다음 단계: Orchestrator post-Sonnet (gate:security-test-pass 라벨 → Phase 2 PR mergeable → merge → Issue auto-close) + PMOAgent (회고)`
 - FIX: `다음 단계: Orchestrator → DeveloperPL 1차 진단 → ArchitectPLAgent 최종 판정 → 재구현 or Change Plan 갱신`
 
 ## 제약 (base §8 외 lane-specific)
@@ -141,6 +145,20 @@ FIX → Orchestrator → DeveloperPL 1차 원인 진단 → ArchitectPLAgent 최
 ## 활용 플러그인/스킬 (base §9 외 lane-specific)
 
 - `Bash(gh api repos/*)` — 1차 layer fetch 전용
+
+### Self-write 책임 (CFP-61 부터)
+
+PL 의 self-write 영역 = **review evidence + pl_recommendation 작성 만** (review-verdict-v3 schema).
+
+다음은 PL 가 **수행하지 않음** — Orchestrator post-Sonnet self-write 영역으로 이전:
+- Story §9 append (`Edit(docs/stories/<KEY>.md)`)
+- GitHub Issue/PR comment (`mcp__github__add_issue_comment`)
+- gate:*-pass label 부착 (`mcp__github__issue_write`)
+- phase:* 라벨 전환 (`mcp__github__issue_write`)
+
+SSOT: ADR-022 §결정 4 (review synthesis ownership ≠ final gate write authority). PL = synthesizer / Orchestrator = final publication post-Sonnet pick.
+
+CFP-35 의 "PL self-write boundary" 는 review-verdict 영역 한정 redefined (other lane plugin self-write boundary 그대로 유지). 비-review-verdict write (예: 다른 lane 의 lane-specific self-write) 는 영향 없음.
 
 ## 문서화 표준
 [`agents/DocsAgent.md`](DocsAgent.md) 참조.

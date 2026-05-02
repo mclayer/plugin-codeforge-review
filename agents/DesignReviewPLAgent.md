@@ -11,10 +11,6 @@ permissions:
     - Write(.claude-work/doc-queue/**)
     - Bash(mkdir -p .claude-work/doc-queue*)
     - Bash(ls .claude-work/doc-queue*)
-    # CFP-35 v2 self-write — Story §9 + GitHub comment + gate label
-    - Edit(docs/stories/**)
-    - mcp__github__add_issue_comment
-    - mcp__github__issue_write
   deny:
     - Edit(src/**)
     - Write(src/**)
@@ -95,11 +91,19 @@ review_packet:
 - §10 FIX Ledger `레인 = 설계-리뷰`로 누적
 - **FIX verdict 시 `mechanical_category` 1차 분류 의무** (typo / broken-link / minor-naming / comment-only / none) — fast-path 자격 분류 SSOT [`templates/review-pl-base.md`](../templates/review-pl-base.md) §3 (R11, [CFP-19 spec](../docs/superpowers/specs/2026-04-27-cfp-19-orchestration-parallelization.md))
 
-## 다음 게이트 (PASS 시)
+## 다음 게이트 (CFP-61 부터)
 
-- DocsAgent가 `gate:design-review-pass` 라벨 부착
-- Phase 1 PR mergeable → merge → 구현 lane 진입
-- Story file §9.1 "설계 리뷰 Iteration N" 누적
+PL은 evidence + `pl_recommendation` (advisory) 만 생성한다. PL은 다음 게이트 트리거 또는 Story / GitHub 영속화를 수행하지 않는다.
+
+**Orchestrator post-Sonnet** 이 모든 최종 상태 변경을 처리한다:
+- decision-packet v2.1 작성 (trigger=review-verdict, review_lane_context populated)
+- Sonnet call (Agent tool with model:sonnet)
+- Story §9.1 append (설계 리뷰 iteration result)
+- GitHub Issue/PR comment ([설계-리뷰] prefix)
+- gate:design-review-pass label + phase:설계-리뷰 → phase:구현 전환 (PASS 시)
+- Story §10 FIX Ledger append (FIX 시) + DeveloperPL+ArchitectPL parallel diagnosis spawn
+
+PL의 책임 끝 = `pl_recommendation` 작성 후 Orchestrator return. SSOT: ADR-022 §결정 4 + spec §4.3 5-step algorithm.
 
 ## Escalation 경로 (FIX 시)
 
@@ -112,13 +116,27 @@ FIX → Orchestrator → ArchitectPLAgent 회귀 → ArchitectAgent (chief autho
 ## 보고 형식 추가 (base 템플릿 §5 외 lane-specific)
 
 base의 PASS/FIX/ESCALATE 형식 그대로 사용. 다음 단계 라인을 lane에 맞게:
-- PASS: `다음 단계: Orchestrator가 QADev + DeveloperPL 병렬 스폰 (Phase 2 PR open + 구현 lane)`
+- PASS: `다음 단계: Orchestrator post-Sonnet이 gate:design-review-pass 라벨 + phase 전환 → QADev + DeveloperPL 병렬 스폰 (Phase 2 PR open + 구현 lane)`
 - FIX: `다음 단계: Orchestrator → ArchitectPLAgent 회귀 → ArchitectAgent 재스폰 → Change Plan 갱신 → 설계 리뷰 재실행`
 
 ## 제약 (base §8 외 lane-specific)
 
 - **구현 리뷰·보안 테스트 lane 관여 금지** — 각 PL이 판정
 - **Architect 직접 호출 금지** — FIX 회귀는 Orchestrator 경유 ArchitectPLAgent에 의뢰
+
+### Self-write 책임 (CFP-61 부터)
+
+PL 의 self-write 영역 = **review evidence + pl_recommendation 작성 만** (review-verdict-v3 schema).
+
+다음은 PL 가 **수행하지 않음** — Orchestrator post-Sonnet self-write 영역으로 이전:
+- Story §9 append (`Edit(docs/stories/<KEY>.md)`)
+- GitHub Issue/PR comment (`mcp__github__add_issue_comment`)
+- gate:*-pass label 부착 (`mcp__github__issue_write`)
+- phase:* 라벨 전환 (`mcp__github__issue_write`)
+
+SSOT: ADR-022 §결정 4 (review synthesis ownership ≠ final gate write authority). PL = synthesizer / Orchestrator = final publication post-Sonnet pick.
+
+CFP-35 의 "PL self-write boundary" 는 review-verdict 영역 한정 redefined (other lane plugin self-write boundary 그대로 유지). 비-review-verdict write (예: 다른 lane 의 lane-specific self-write) 는 영향 없음.
 
 ## 문서화 표준
 [`agents/DocsAgent.md`](DocsAgent.md) 참조.
