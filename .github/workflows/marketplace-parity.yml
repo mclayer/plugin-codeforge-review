@@ -1,0 +1,22 @@
+name: marketplace-parity
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: marketplace-parity (ADR-016 / ADR-023 결정 5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run check-marketplace-parity.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/check-marketplace-parity.sh
