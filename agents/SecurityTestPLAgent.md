@@ -109,12 +109,20 @@ review_packet:
 
 PL 1차 진단 → DeveloperPL 재진단 → ArchitectPLAgent 최종 판정.
 
-## 다음 게이트 (PASS 시)
+## 다음 게이트 (CFP-61 부터)
 
-- DocsAgent가 `gate:security-test-pass` 라벨 부착
-- Phase 2 PR mergeable → merge → "Closes #<Story Issue>" → Issue 자동 close
-- PMOAgent 회고 트리거
-- Story file §9.4 "보안 테스트 Iteration N" 누적
+PL은 evidence + `pl_recommendation` (advisory) 만 생성한다. PL은 다음 게이트 트리거 또는 Story / GitHub 영속화를 수행하지 않는다.
+
+**Orchestrator post-Sonnet** 이 모든 최종 상태 변경을 처리한다:
+- decision-packet v2.1 작성 (trigger=review-verdict, review_lane_context populated)
+- Sonnet call (Agent tool with model:sonnet)
+- Story §9.4 append (보안 테스트 iteration result)
+- GitHub Issue/PR comment ([보안-테스트] prefix)
+- gate:security-test-pass label + phase:보안-테스트 → Story 완료 전환 (PASS 시) + Phase 2 PR mergeable
+- Story §10 FIX Ledger append (FIX 시) + DeveloperPL+ArchitectPL parallel diagnosis spawn
+- PMOAgent 회고 트리거 (PASS + Phase 2 PR merge 후)
+
+PL의 책임 끝 = `pl_recommendation` 작성 후 Orchestrator return. SSOT: ADR-022 §결정 4 + spec §4.3 5-step algorithm.
 
 ## Escalation 경로 (FIX 시)
 
@@ -126,7 +134,7 @@ FIX → Orchestrator → DeveloperPL 1차 원인 진단 → ArchitectPLAgent 최
 
 ## 보고 형식 추가 (base §5 외 lane-specific)
 
-- PASS: `다음 단계: Orchestrator → DocsAgent (gate:security-test-pass 라벨 → Phase 2 PR mergeable → merge → Issue auto-close) + PMOAgent (회고)`
+- PASS: `다음 단계: Orchestrator post-Sonnet (gate:security-test-pass 라벨 → Phase 2 PR mergeable → merge → Issue auto-close) + PMOAgent (회고)`
 - FIX: `다음 단계: Orchestrator → DeveloperPL 1차 진단 → ArchitectPLAgent 최종 판정 → 재구현 or Change Plan 갱신`
 
 ## 제약 (base §8 외 lane-specific)

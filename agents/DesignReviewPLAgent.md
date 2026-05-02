@@ -91,11 +91,19 @@ review_packet:
 - §10 FIX Ledger `레인 = 설계-리뷰`로 누적
 - **FIX verdict 시 `mechanical_category` 1차 분류 의무** (typo / broken-link / minor-naming / comment-only / none) — fast-path 자격 분류 SSOT [`templates/review-pl-base.md`](../templates/review-pl-base.md) §3 (R11, [CFP-19 spec](../docs/superpowers/specs/2026-04-27-cfp-19-orchestration-parallelization.md))
 
-## 다음 게이트 (PASS 시)
+## 다음 게이트 (CFP-61 부터)
 
-- DocsAgent가 `gate:design-review-pass` 라벨 부착
-- Phase 1 PR mergeable → merge → 구현 lane 진입
-- Story file §9.1 "설계 리뷰 Iteration N" 누적
+PL은 evidence + `pl_recommendation` (advisory) 만 생성한다. PL은 다음 게이트 트리거 또는 Story / GitHub 영속화를 수행하지 않는다.
+
+**Orchestrator post-Sonnet** 이 모든 최종 상태 변경을 처리한다:
+- decision-packet v2.1 작성 (trigger=review-verdict, review_lane_context populated)
+- Sonnet call (Agent tool with model:sonnet)
+- Story §9.1 append (설계 리뷰 iteration result)
+- GitHub Issue/PR comment ([설계-리뷰] prefix)
+- gate:design-review-pass label + phase:설계-리뷰 → phase:구현 전환 (PASS 시)
+- Story §10 FIX Ledger append (FIX 시) + DeveloperPL+ArchitectPL parallel diagnosis spawn
+
+PL의 책임 끝 = `pl_recommendation` 작성 후 Orchestrator return. SSOT: ADR-022 §결정 4 + spec §4.3 5-step algorithm.
 
 ## Escalation 경로 (FIX 시)
 
@@ -108,7 +116,7 @@ FIX → Orchestrator → ArchitectPLAgent 회귀 → ArchitectAgent (chief autho
 ## 보고 형식 추가 (base 템플릿 §5 외 lane-specific)
 
 base의 PASS/FIX/ESCALATE 형식 그대로 사용. 다음 단계 라인을 lane에 맞게:
-- PASS: `다음 단계: Orchestrator가 QADev + DeveloperPL 병렬 스폰 (Phase 2 PR open + 구현 lane)`
+- PASS: `다음 단계: Orchestrator post-Sonnet이 gate:design-review-pass 라벨 + phase 전환 → QADev + DeveloperPL 병렬 스폰 (Phase 2 PR open + 구현 lane)`
 - FIX: `다음 단계: Orchestrator → ArchitectPLAgent 회귀 → ArchitectAgent 재스폰 → Change Plan 갱신 → 설계 리뷰 재실행`
 
 ## 제약 (base §8 외 lane-specific)

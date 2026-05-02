@@ -75,20 +75,22 @@ review_packet:
 - 같은 location(파일·라인·섹션·ADR) + 동일 category finding은 1건 병합
 - severity는 두 리뷰 중 **높은 쪽 채택**
 
-### Worker verdict → review_verdict.status 변환
+### Worker verdict → review_verdict.pl_recommendation 변환
 
-워커는 `verdict: PASS | ISSUES | NO_SHIP | ESCALATE_PACKET_INCOMPLETE` 4종으로 보고 ([ClaudeReviewAgent §보고 형식](../agents/ClaudeReviewAgent.md), [CodexReviewAgent §정규화 보고 스키마](../agents/CodexReviewAgent.md)). PL은 dedup·severity 종합 후 양 워커 결과를 다음 표로 contract status로 변환:
+워커는 `verdict: PASS | ISSUES | NO_SHIP | ESCALATE_PACKET_INCOMPLETE` 4종으로 보고 ([ClaudeReviewAgent §보고 형식](../agents/ClaudeReviewAgent.md), [CodexReviewAgent §정규화 보고 스키마](../agents/CodexReviewAgent.md)). PL은 dedup·severity 종합 후 양 워커 결과를 다음 표로 contract pl_recommendation으로 변환:
 
-| 양 워커 종합 (dedup 후 P0/P1 카운트 기준) | review_verdict.status |
+| 양 워커 종합 (dedup 후 P0/P1 카운트 기준) | review_verdict.pl_recommendation |
 |---|---|
-| 두 워커 중 1건 이상 `ESCALATE_PACKET_INCOMPLETE` | (PL은 status 반환 안 함 — packet 정정 후 워커 재 dispatch 의뢰) |
+| 두 워커 중 1건 이상 `ESCALATE_PACKET_INCOMPLETE` | `ESCALATE_PACKET_INCOMPLETE` (PL advisory — Orchestrator가 Sonnet 호출 차단 후 user escalation) |
 | 두 워커 모두 `PASS` (또는 `ISSUES` with P0=0, P1=0) | `PASS` |
 | `NO_SHIP` 1건 이상 (즉 P0 ≥ 1) | `FIX` |
 | `ISSUES` + P0=0, P1 ≥ 2 | `FIX` |
 | `ISSUES` + P0=0, P1 = 1 | `FIX_DISCRETIONARY` (PL 재량 — 근거 포함 Orchestrator 전달) |
 | FIX 카운터 lane 한도 초과 | `FIX` 결정 후 PL이 별도 ESCALATE 신호 추가 (lane md FIX 카운터 정책 SSOT) |
 
-본 표가 contract `review_verdict.status` enum과 워커 verdict enum 사이의 유일한 매핑 SSOT. 워커 verdict enum 추가/변경 시 본 표도 동시 갱신 의무.
+본 표가 contract `review_verdict.pl_recommendation` enum과 워커 verdict enum 사이의 유일한 매핑 SSOT. 워커 verdict enum 추가/변경 시 본 표도 동시 갱신 의무.
+
+**v3 advisory 의미**: 위 `pl_recommendation` 값은 모두 **advisory** — PL 최종 판정이 아님. Sonnet이 `sonnet_final_status` (PASS|FIX) 를 최종 결정한다 (trigger 5, ADR-022 §결정 4). PASS/FIX/FIX_DISCRETIONARY/ESCALATE_PACKET_INCOMPLETE = Orchestrator + Sonnet 판단을 위한 PL evidence 제공.
 
 ### 종합 판정
 
@@ -138,7 +140,7 @@ PL이 verdict packet에 **`mechanical_category`** 필드를 추가해 다음 자
 ## 4. FIX 카운터 SSOT
 
 - **카운터 SSOT** = `docs/stories/<KEY>.md` §10 "FIX Ledger" (GitHub Issue 라벨 `fix:<레인>-retry`는 보조 지표)
-- PL이 FIX 판정 시 `verdict.status=FIX` 반환만 — §10 FIX Ledger append 는 codeforge core Orchestrator 단독 책임 (CFP-32 monopoly · `fix-event-v1` contract)
+- PL이 FIX 판정 시 `pl_recommendation=FIX` 반환만 — §10 FIX Ledger append 는 codeforge core Orchestrator 단독 책임 (CFP-32 monopoly · `fix-event-v1` contract)
 - §10 commit → `fix-ledger-sync.yml` Action이 자동 (1) Issue comment `[FIX #N]` mirror, (2) `fix:<레인>-retry` 라벨 부착
 - "현재 사이클" count = §10 RESET 마커 이후 iteration 합산
 
@@ -194,10 +196,25 @@ PL은 severity 종합 후 **즉시 Orchestrator에 verdict return** (PASS / FIX 
 
 **v2 → v3 BREAKING 변경 (CFP-61, ADR-022)**:
 - PL의 `status` 필드 **제거** → `pl_recommendation` (advisory only) 신설
-- Sonnet 최종 결정 = `sonnet_final_status` **신설** (Orchestrator 자동 populate)
+- Sonnet 최종 결정 = `sonnet_final_status` **신설** (Orchestrator populate)
 - `decision_state` **신설** — PL 단계에서 `pending_sonnet` 또는 `blocked_packet_incomplete`
 - Story §9 / GitHub comment / gate label / phase transition self-write = **Orchestrator이 Sonnet 호출 후 처리** (PL 아님)
-- `writes_completed` **제거** — no longer PL responsibility
+- `writes_completed` **유지** — 의미 변경 (PL self-write 결과 → **Orchestrator** self-write audit). PL이 이 필드를 populate하는 것이 아니라 Orchestrator가 자체 write 감사 결과를 기록.
+
+**PL-produced 필드 vs Orchestrator-populated 필드 (CFP-61 / ADR-022 §결정 4)**:
+
+PL이 작성하는 필드 (review evidence + advisory):
+- `contract_version`, `lane`, `story_key`, `iteration`
+- `findings[]` (전체 배열)
+- `pl_recommendation` (advisory — PASS | FIX | FIX_DISCRETIONARY | ESCALATE_PACKET_INCOMPLETE)
+- `decision_state` (PL 단계에서 `pending_sonnet` 또는 `blocked_packet_incomplete` 만)
+
+Orchestrator가 Sonnet 호출 후 populate하는 필드:
+- `sonnet_final_status` (PASS | FIX — Sonnet binary 결정)
+- `decider_decision_ref` (object — packet_id + model)
+- `decision_state` (Sonnet 응답에 따라 `decided` | `review_reopen_requested` | `decider_timeout` | `write_partial` | `write_complete` 로 갱신)
+- `write_errors[]` (write 실패 시 populate)
+- `writes_completed` (모든 6개 sub-field — Orchestrator self-write 감사)
 
 ```yaml
 review_verdict:
@@ -219,7 +236,21 @@ review_verdict:
 
   # Orchestrator populate 후속 필드 (v3부터, PL은 수정 금지):
   sonnet_final_status: PASS | FIX   # Orchestrator populate (Sonnet 결정) — Story §9·GitHub·gate·phase는 이 값 기반
-  decider_decision_ref: <packet_id>  # Orchestrator populate — decision-packet-v2 reference (CFP-59 / ADR-019)
+  decider_decision_ref:              # Orchestrator populate — decision-packet-v2.1 reference (CFP-61 / ADR-022)
+    packet_id: <story_key>-<3-digit-seq>
+    model: claude-sonnet-4-6
+  decision_state: decided | review_reopen_requested | decider_timeout | decider_suspended | write_partial | write_complete  # Orchestrator 갱신
+  write_errors:                      # Orchestrator populate — decision_state=write_partial 시
+    - step: story_section_9 | phase_comment | gate_label_attached | phase_label_transitioned | fix_ledger_append | diagnosis_spawn
+      error_class: github_mcp_timeout | edit_conflict | mcp_auth_failure | other
+      retry_count: <int>
+  writes_completed:                  # Orchestrator self-write audit (CFP-61 — 의미 재정의, PL responsibility 아님)
+    story_section_9: <bool>
+    phase_comment: <bool>
+    gate_label_attached: <bool>
+    phase_label_transitioned: <bool>
+    fix_ledger_append: <bool>        # FIX 시 only
+    diagnosis_spawn: <bool>          # FIX 시 only
 ```
 
 `mechanical_category` 필드는 본 contract에 정의되지 않음 — plugin 내부 §3 fast-path 분류용 필드로만 PL → Orchestrator 사이드채널.
@@ -236,13 +267,14 @@ v3부터 **PL은 verdict emit만 수행** (evidence + pl_recommendation + decisi
 | GitHub phase comment | PL write | Orchestrator write |
 | gate label + phase transition | PL write (PASS only) | Orchestrator write (Sonnet final_status 기반) |
 | verdict contract return 타이밍 | PL이 4개 task 완료 후 | PL이 evidence 정리하자마자 |
-| writes_completed 필드 | 필수 (v2) | 제거 (v3) |
+| writes_completed 필드 | PL self-write 결과 (v2) | **Orchestrator** self-write 감사 (v3 — 의미 재정의, 제거 아님) |
 
 PL의 output boundary (CFP-61 ADR-022):
 - ✅ `pl_recommendation` (advisory)
 - ✅ `findings[]` (evidence)
 - ✅ `decision_state` (pending_sonnet or blocked_packet_incomplete)
-- ❌ `sonnet_final_status`, `decider_decision_ref` (Orchestrator populate, PL 수정 금지)
+- ❌ `sonnet_final_status`, `decider_decision_ref` (Orchestrator populate, PL 수정 금지) — decision-packet-v2.1 reference (CFP-61 / ADR-022)
+- ❌ `writes_completed`, `write_errors[]` (Orchestrator self-write 감사 필드, PL 수정 금지)
 - ❌ Story §9, GitHub comment, gate label, phase — Orchestrator 책임
 
 **Lane → gate label / next phase 매핑 (Orchestrator이 Sonnet 호출 후 적용)**:
@@ -318,4 +350,4 @@ GitHub Issue/PR/docs write 책임 분담은 각 lane plugin 의 CLAUDE.md `Self-
 |---------|------|-------|----------|
 | v1.0 | CFP-35 | — | Initial typed contract (PL self-write) |
 | v2.0 | CFP-35 | — | §5.4: `contract_version: 2.0`, `status: PASS\|FIX\|FIX_DISCRETIONARY`, `writes_completed` 신설 |
-| v3.0 | 2026-05-02 | CFP-61 | §5.4: `pl_recommendation` (advisory only) + `decision_state`, Orchestrator post-Sonnet self-write 영역 정의, `writes_completed` 제거, boundary 재정의 (ADR-022) |
+| v3.0 | 2026-05-02 | CFP-61 | §5.4: `pl_recommendation` (advisory only) + `decision_state`, Orchestrator post-Sonnet self-write 영역 정의, `writes_completed` 의미 재정의 (PL→Orchestrator self-write audit), `decider_decision_ref` object 신설 (decision-packet-v2.1 / ADR-022) |

@@ -163,3 +163,18 @@ decision_state=blocked_packet_incomplete (pl_recommendation=ESCALATE_PACKET_INCO
 
 - v2 status: Active → Archived (CFP-61 머지 직후)
 - v2 archive: 6 CFP 무사고 후 (= v3 안정화 확인) — 별도 cleanup CFP에서 file 삭제
+
+## 10. Decider 모델 invariant — Sonnet not reviewer (CFP-61 / ADR-022 §결정 4)
+
+For trigger 5 `review-verdict`, Claude Sonnet (`claude-sonnet-4-6`) is the final decider over ReviewPL-provided review evidence. Sonnet does NOT become a review worker or ReviewPL:
+
+- Sonnet must NOT perform primary file inspection
+- Sonnet must NOT generate the review finding set
+- Sonnet must NOT alter severity normalization
+- Sonnet must NOT replace ReviewPL dedup
+
+Its authority is limited to selecting the final gate outcome (`PASS` | `FIX`) from packet evidence.
+
+**Edge case**: If Sonnet reasoning identifies a potential missing issue in the packet, that item is not a review finding until routed back to ReviewPL via `packet_requires_review_reopen` enum value (per `(story_key, lane, iteration)` 1 회 한도). Orchestrator must not publish Sonnet reasoning content as a review finding directly.
+
+**Trigger 5 contract-fixed options**: option set is contract-fixed as exactly `PASS` and `FIX` (binary). Sonnet must not add, remove, rename, or synthesize options.

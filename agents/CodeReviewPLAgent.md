@@ -88,10 +88,19 @@ review_packet:
 
 PL 1차 진단 → Orchestrator 경유 DeveloperPL 재진단 → ArchitectPLAgent 최종 판정.
 
-## 다음 게이트 (PASS 시)
+## 다음 게이트 (CFP-61 부터)
 
-- 구현 테스트 lane 진입 (Orchestrator → TestAgent 스폰)
-- Story file §9.2 "구현 리뷰 Iteration N" 누적
+PL은 evidence + `pl_recommendation` (advisory) 만 생성한다. PL은 다음 게이트 트리거 또는 Story / GitHub 영속화를 수행하지 않는다.
+
+**Orchestrator post-Sonnet** 이 모든 최종 상태 변경을 처리한다:
+- decision-packet v2.1 작성 (trigger=review-verdict, review_lane_context populated)
+- Sonnet call (Agent tool with model:sonnet)
+- Story §9.2 append (구현 리뷰 iteration result)
+- GitHub Issue/PR comment ([구현-리뷰] prefix)
+- phase:구현-리뷰 → phase:구현-테스트 전환 (PASS 시, gate label 없음)
+- Story §10 FIX Ledger append (FIX 시) + DeveloperPL+ArchitectPL parallel diagnosis spawn
+
+PL의 책임 끝 = `pl_recommendation` 작성 후 Orchestrator return. SSOT: ADR-022 §결정 4 + spec §4.3 5-step algorithm.
 
 ## Escalation 경로 (FIX 시)
 
