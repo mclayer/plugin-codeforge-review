@@ -11,10 +11,6 @@ permissions:
     - Write(.claude-work/doc-queue/**)
     - Bash(mkdir -p .claude-work/doc-queue*)
     - Bash(ls .claude-work/doc-queue*)
-    # CFP-35 v2 self-write — Story §9 + GitHub comment + gate label
-    - Edit(docs/stories/**)
-    - mcp__github__add_issue_comment
-    - mcp__github__issue_write
   deny:
     - Edit(src/**)
     - Write(src/**)
@@ -119,6 +115,20 @@ base의 PASS/FIX/ESCALATE 형식 그대로 사용. 다음 단계 라인을 lane�
 
 - **구현 리뷰·보안 테스트 lane 관여 금지** — 각 PL이 판정
 - **Architect 직접 호출 금지** — FIX 회귀는 Orchestrator 경유 ArchitectPLAgent에 의뢰
+
+### Self-write 책임 (CFP-61 부터)
+
+PL 의 self-write 영역 = **review evidence + pl_recommendation 작성 만** (review-verdict-v3 schema).
+
+다음은 PL 가 **수행하지 않음** — Orchestrator post-Sonnet self-write 영역으로 이전:
+- Story §9 append (`Edit(docs/stories/<KEY>.md)`)
+- GitHub Issue/PR comment (`mcp__github__add_issue_comment`)
+- gate:*-pass label 부착 (`mcp__github__issue_write`)
+- phase:* 라벨 전환 (`mcp__github__issue_write`)
+
+SSOT: ADR-022 §결정 4 (review synthesis ownership ≠ final gate write authority). PL = synthesizer / Orchestrator = final publication post-Sonnet pick.
+
+CFP-35 의 "PL self-write boundary" 는 review-verdict 영역 한정 redefined (other lane plugin self-write boundary 그대로 유지). 비-review-verdict write (예: 다른 lane 의 lane-specific self-write) 는 영향 없음.
 
 ## 문서화 표준
 [`agents/DocsAgent.md`](DocsAgent.md) 참조.
