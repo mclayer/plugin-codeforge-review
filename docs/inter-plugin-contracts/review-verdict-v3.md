@@ -157,7 +157,7 @@ decision_state=blocked_packet_incomplete (pl_recommendation=ESCALATE_PACKET_INCO
 
 ## 8. v3 ↔ canonical sync (ADR-010)
 
-본 file canonical, wrapper sibling sync 의무. canonical 변경 시 wrapper sibling sync PR 의무. CI lint = `check-inter-plugin-contracts.sh` (wrapper repo).
+본 file = sibling. canonical = `mclayer/plugin-codeforge-review/docs/inter-plugin-contracts/review-verdict-v3.md`. canonical 변경 시 wrapper sibling sync PR 의무. CI lint = `check-inter-plugin-contracts.sh` (wrapper repo).
 
 ## 9. v2 deprecate / archive
 
