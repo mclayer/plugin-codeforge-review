@@ -1,0 +1,35 @@
+# codeforge family .gitattributes — line ending + exec bit normalization (CFP-120)
+#
+# Windows clones default to autocrlf which:
+#   - Converts LF→CRLF on checkout (breaks bash scripts on Linux CI)
+#   - Loses exec bit (chmod +x) since Windows filesystem doesn't track it
+#
+# This file ensures consistent behavior across Windows + macOS + Linux contributors
+# and Linux CI runners.
+
+# Default text handling — auto-detect, normalize to LF in repo.
+* text=auto eol=lf
+
+# Bash scripts — must be LF + executable.
+*.sh text eol=lf
+# (git's internal exec-bit is set per-file via `git update-index --chmod=+x`,
+# not via .gitattributes. .gitattributes only handles line endings + identification.
+# Contributors should add new shell scripts with: `git update-index --chmod=+x <file>`
+# OR run `chmod +x <file>` then `git add <file>` on Linux/macOS.)
+
+# Markdown / YAML / JSON — LF for cross-platform diff stability.
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+
+# Python — LF.
+*.py text eol=lf
+
+# Binary files — no normalization.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg text eol=lf
+*.pdf binary
