@@ -22,13 +22,11 @@ permissions:
     - Edit(docs/domain-knowledge/**)
     - Edit(docs/retros/**)
     - Edit(docs/inter-plugin-contracts/**)
-    - Edit(docs/superpowers/**)
     - Write(docs/change-plans/**)
     - Write(docs/adr/**)
     - Write(docs/domain-knowledge/**)
     - Write(docs/retros/**)
     - Write(docs/inter-plugin-contracts/**)
-    - Write(docs/superpowers/**)
 ---
 
 **보안 테스트 레인 PL**. 구현 테스트 레인(TestAgent) PASS 이후 Orchestrator가 본 에이전트를 스폰한다. 공통 워커 **ClaudeReviewAgent + CodexReviewAgent**에 lane=security packet을 주입해 병렬 리뷰 보고를 수집·종합. 본 PL은 추가로 **1차 layer (GitHub native)** 결과 fetch 의무가 있다.

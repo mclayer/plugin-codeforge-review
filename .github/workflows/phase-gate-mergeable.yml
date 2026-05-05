@@ -16,10 +16,10 @@ jobs:
       - name: Evaluate phase gate (cross-repo Story fetch)
         uses: actions/github-script@v7
         env:
-          # Cross-repo PAT for fetching Story file from codeforge-internal-docs.
+          # Cross-repo PAT for fetching Story file from any external repo via story_uri PR-body marker.
           # Falls back to GITHUB_TOKEN if PAT not configured (degraded: PR-label-only mode).
+          # Story repo coordinate is parsed from story_uri URL itself (no hardcode — F3 fix CFP-63).
           CROSS_REPO_TOKEN: ${{ secrets.CODEFORGE_CROSS_REPO_PAT }}
-          STORY_REPO: mclayer/codeforge-internal-docs
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -27,7 +27,7 @@ jobs:
             const body = pr.body || '';
 
             // 1. Parse linked Story Issue refs from PR body (Related/Closes/Fixes/Resolves: #N)
-            //    OR cross-repo URI: story_uri: https://github.com/mclayer/codeforge-internal-docs/blob/main/review/stories/<KEY>.md
+            //    OR cross-repo URI: story_uri: https://github.com/mclayer/codeforge-internal-docs/blob/main/test/stories/<KEY>.md
             const localRefs = [...body.matchAll(/(?:Related|Closes|Fixes|Resolves):?\s+#(\d+)/gi)]
               .map(m => parseInt(m[1], 10));
             const storyUriMatch = body.match(/story_uri:\s*(\S+)/);
@@ -50,11 +50,18 @@ jobs:
                   sourceNote = `story_uri found but CODEFORGE_CROSS_REPO_PAT secret missing (degraded)`;
                 } else {
                   try {
-                    const { Octokit } = require('@octokit/rest');
-                    const crossOcto = new Octokit({ auth: token });
-                    const { data: file } = await crossOcto.repos.getContent({
-                      owner: sOwner, repo: sRepo, path: sPath, ref: sRef
+                    // CFP-113 fix: @octokit/rest not bundled in github-script v7.
+                    // Use fetch directly with Authorization header.
+                    const url = `https://api.github.com/repos/${sOwner}/${sRepo}/contents/${sPath}?ref=${sRef}`;
+                    const resp = await fetch(url, {
+                      headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'User-Agent': 'phase-gate-mergeable-action'
+                      }
                     });
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+                    const file = await resp.json();
                     const content = Buffer.from(file.content, 'base64').toString('utf-8');
                     // Parse YAML frontmatter (simple regex — phase + gate fields)
                     const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -96,16 +103,20 @@ jobs:
             }
 
             // 4. Last resort: PR labels
-            if (!phaseLabel) {
+            // CFP-113 fix: also supplement missing gate from PR labels even if Story
+            // provided phase. Story frontmatter typically has `phase:` but not `gate:`
+            // (gate is iteration-driven, not Story-fixed).
+            if (!phaseLabel || !gateLabel) {
               const { data: prFull } = await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number
               });
               const prLabels = prFull.labels.map(l => l.name);
-              phaseLabel = prLabels.find(l => l.startsWith('phase:'));
-              gateLabel = prLabels.find(l => l.startsWith('gate:'));
-              sourceNote = sourceNote ? `${sourceNote}; PR labels last-resort` : 'PR labels (no Story binding)';
+              if (!phaseLabel) phaseLabel = prLabels.find(l => l.startsWith('phase:'));
+              if (!gateLabel) gateLabel = prLabels.find(l => l.startsWith('gate:'));
+              const supplementNote = sourceNote ? `${sourceNote}; PR labels supplement` : 'PR labels (no Story binding)';
+              sourceNote = supplementNote;
             }
 
             // 5. Determine required gate by file change scope
@@ -121,9 +132,56 @@ jobs:
               f.filename.startsWith('overlay/')
             );
 
-            const required = hasCode
-              ? { phase: 'phase:보안-테스트', gate: 'gate:security-test-pass' }
-              : { phase: 'phase:설계-리뷰', gate: 'gate:design-review-pass' };
+            // 5a. Doc-only / type:epic fast-pass (CFP-106 fix #143).
+            //     mctrader debut F6: Epic close + doc-only PR 가 phase-gate-mergeable 의
+            //     phase:보안-테스트/gate 라벨 부재 → 항상 ACTION_REQUIRED → admin merge 의존.
+            //     Resolution: type:epic 라벨 OR all-doc files (`docs/`, `wrapper/`, `*.md`) → fast-pass success.
+            const prFullForEpic = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+            const allLabels = prFullForEpic.data.labels.map(l => l.name);
+            const isEpicLabel = allLabels.includes('type:epic');
+            const isDocOnly = !hasCode && files.every(f =>
+              f.filename.endsWith('.md') ||
+              f.filename.startsWith('docs/') ||
+              f.filename.startsWith('wrapper/') ||
+              f.filename.startsWith('.github/') ||
+              f.filename === 'CHANGELOG.md' ||
+              f.filename === 'README.md'
+            );
+            if (isEpicLabel || isDocOnly) {
+              const reason = isEpicLabel
+                ? `type:epic label fast-pass (CFP-106 #143 fix)`
+                : `doc-only PR fast-pass — files: ${files.map(f=>f.filename).slice(0,3).join(', ')}${files.length>3?'...':''} (CFP-106 #143 fix)`;
+              await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'phase-gate-mergeable',
+                head_sha: pr.head.sha,
+                status: 'completed',
+                conclusion: 'success',
+                output: { title: 'Phase Gate (fast-pass)', summary: reason }
+              });
+              return;
+            }
+
+            // CFP-113 fix: trust Story frontmatter phase when present.
+            // Phase=설계 (Phase 1 PR) → gate:design-review-pass regardless of hasCode.
+            // Phase=구현/구현-리뷰/구현-테스트/보안-테스트 → match per-phase gate.
+            // Fallback to hasCode heuristic only when no Story binding.
+            let required;
+            if (phaseLabel === 'phase:설계' || phaseLabel === '설계' || phaseLabel === 'phase:설계-리뷰' || phaseLabel === '설계-리뷰') {
+              required = { phase: phaseLabel, gate: 'gate:design-review-pass' };
+            } else if (phaseLabel === 'phase:보안-테스트' || phaseLabel === '보안-테스트') {
+              required = { phase: phaseLabel, gate: 'gate:security-test-pass' };
+            } else {
+              // No Story binding or unknown phase — file-based heuristic (legacy)
+              required = hasCode
+                ? { phase: 'phase:보안-테스트', gate: 'gate:security-test-pass' }
+                : { phase: 'phase:설계-리뷰', gate: 'gate:design-review-pass' };
+            }
 
             const phaseOk = phaseLabel === required.phase;
             const gateOk = gateLabel === required.gate;
