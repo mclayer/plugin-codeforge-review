@@ -96,7 +96,7 @@ P1 품질 finding은 가능하면 `dup-local`(단일 파일·함수) 또는 `dup
 
 대상 범위가 큰 경우 우선순위는 ① 실제 변경 파일, ② packet이 가리키는 Story/ADR/매니페스트, ③ 직접 인접 파일 순으로 제한. 근거 없는 전체 레포 스캔 금지.
 
-`superpowers:code-reviewer` 스킬을 활용 가능하지만 lane-specific 체크는 packet 체크리스트가 SSOT.
+`superpowers:code-reviewer` 스킬을 활용 가능하지만 lane-specific 체크는 packet 체크리스트가 SSOT (호출 SSOT: wrapper [`docs/superpowers-integration.md §2`](https://github.com/mclayer/codeforge/blob/main/docs/superpowers-integration.md) row `review/ClaudeReviewAgent`).
 
 ## 제약
 
@@ -188,7 +188,9 @@ PL packet에 checklist_path와 category_enum이 누락. generic fallback 금지 
 
 ## 활용 스킬
 
-- `superpowers:code-reviewer` — 표준 체크리스트 일관 적용 (lane-agnostic 부분)
+호출 skill SSOT = wrapper [`docs/superpowers-integration.md §2`](https://github.com/mclayer/plugin-codeforge/blob/main/docs/superpowers-integration.md) row `review/ClaudeReviewAgent` 참조 (정책 재정의 X, link only per [ADR-028](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-028-superpowers-integration-policy.md) §결정 1):
+
+- `superpowers:code-reviewer` — 표준 체크리스트 일관 적용 (lane-agnostic)
 - `superpowers:verification-before-completion` — PASS 판정 전 evidence 확인
 
 ## 문서화 표준
