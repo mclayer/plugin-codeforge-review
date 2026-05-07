@@ -4,6 +4,32 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
+## [1.1.0] - 2026-05-07
+
+### CFP-128 / ADR-033 — Container security 1st-layer (trivy + hadolint)
+
+SecurityTestPL 1st-layer 도구에 trivy (image / IaC 스캔) + hadolint (Dockerfile lint) 추가. `templates/review-pl-base.md` v3.0 → v3.1 — §3 Container security severity rule row append. ADR-033 §결정 4 (carrier — wrapper canonical).
+
+### Added
+
+- SecurityTestPL 1st-layer: trivy + hadolint findings ingestion (Dependabot / CodeQL / Secret Scanning 과 동렬)
+- `templates/review-pl-base.md` §3 container security severity rule (P0: critical CVE in base image / hardcoded secret in Dockerfile / privileged user — P1: outdated base image / missing healthcheck / non-pinned digest)
+
+### Changed
+
+- `templates/review-pl-base.md` v3.0 → v3.1 (CFP-128 / ADR-033 §3 Container security severity rule row)
+
+### Cross-ref
+
+- ADR-033 §결정 4 (carrier — wrapper canonical)
+- D3 sibling sync PR #17 (commit 0e89c1d) — SecurityTestPL 1st-layer + review-pl-base container security
+- F4 (this PR) — codeforge-review version bump
+
+### Compatibility
+
+- **Wire**: review_verdict v3 schema 변경 없음 (additive only). 1st-layer ingestion 확장만
+- **Migration**: consumer 측 trivy + hadolint workflow 가 없으면 findings 누락 (graceful degradation, 별도 CFP 로 consumer template 추가)
+
 ## [1.0.0] - 2026-04-29
 
 ### CFP-35 (codeforge ζ arc) — review_verdict v2 retrofit (BREAKING)
