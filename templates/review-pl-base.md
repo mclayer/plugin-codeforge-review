@@ -135,6 +135,29 @@ PL이 verdict packet에 **`mechanical_category`** 필드를 추가해 다음 자
 - ArchitectPLAgent가 noise 재배정 가능 — GitHub Issue 코멘트 의무 기록 (Orchestrator 경유 DocsAgent)
 - 재배정 기록 형식: `[리뷰 종합] <PL이름> → ArchitectPLAgent reclassify: <이유>`
 
+### Container security severity rule (CFP-128 / ADR-033, SecurityTest lane only)
+
+`infra_strategy: docker_first` consumer 의 SecurityTest lane 한정. 본 rule 은 1차 layer 자동 도구 (trivy / hadolint) 결과의 contract `findings[].severity` 매핑 SSOT — `category: dependency-cve` (trivy CVE) 또는 `category: config` (hadolint Dockerfile / trivy misconfig) 로 emit.
+
+| 도구 결과 | severity | 비고 |
+|---|:---:|---|
+| trivy CRITICAL CVE | **P0** | no-pass · immediate FIX |
+| trivy HIGH CVE | **P1** | FIX with mitigation plan |
+| trivy MEDIUM / LOW CVE | advisory (P2) | no FIX gate · 단 design 시점 검토 권고 |
+| trivy misconfig (CRITICAL) | **P0** | Dockerfile · k8s manifest critical misconfig |
+| trivy misconfig (HIGH) | **P1** | best-practice 위반 |
+| hadolint error | **P0** | Dockerfile syntax 결함 (build fail) |
+| hadolint warning | **P1** | best practice 위반 (mitigation 가능) |
+| hadolint info | advisory (P2) | no FIX gate |
+
+**Mitigation 정책**:
+- trivy `--ignore-unfixed: true` (default) — base image CVE 변동 의존 noise 회피. fixed-version 가용 CVE 만 gate.
+- hadolint `failure-threshold: warning` — info-level pass.
+
+본 rule 은 SecurityTest lane 만 적용. DesignReview / CodeReview lane finding 에는 영향 없음 (SecurityArch / SecurityTest 분담 — wrapper [CLAUDE.md](https://github.com/mclayer/plugin-codeforge/blob/main/CLAUDE.md) "Design / Code / Security 리뷰 책임 매트릭스" SSOT).
+
+ADR 근거: [ADR-033](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-033-docker-first-infra-engineering.md) §결정 4. SecurityTestPLAgent 1차 layer fetch 의무 = [`agents/SecurityTestPLAgent.md`](../agents/SecurityTestPLAgent.md) §"1차 layer fetch 의무".
+
 ---
 
 ## 4. FIX 카운터 SSOT
@@ -351,3 +374,4 @@ GitHub Issue/PR/docs write 책임 분담은 각 lane plugin 의 CLAUDE.md `Self-
 | v1.0 | CFP-35 | — | Initial typed contract (PL self-write) |
 | v2.0 | CFP-35 | — | §5.4: `contract_version: 2.0`, `status: PASS\|FIX\|FIX_DISCRETIONARY`, `writes_completed` 신설 |
 | v3.0 | 2026-05-02 | CFP-61 | §5.4: `pl_recommendation` (advisory only) + `decision_state`, Orchestrator post-Sonnet self-write 영역 정의, `writes_completed` 의미 재정의 (PL→Orchestrator self-write audit), `decider_decision_ref` object 신설 (decision-packet-v2.1 / ADR-022) |
+| v3.1 | 2026-05-07 | CFP-128 | §3: Container security severity rule append (SecurityTest lane only) — trivy CRITICAL/HIGH/mid + hadolint error/warning/info. ADR-033 §결정 4 sibling sync. |

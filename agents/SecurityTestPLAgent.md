@@ -40,12 +40,31 @@ ADR 근거: [ADR-001](../docs/adr/ADR-001-review-agent-unification.md).
 
 ## 1차 layer fetch 의무 (lane-specific)
 
-워커 스폰 **이전에** GitHub native 1차 layer 결과를 PL이 직접 fetch:
+워커 스폰 **이전에** 1차 layer 자동 도구 결과를 PL이 직접 fetch. 도구 세트 = **5종** (3 GitHub native + 2 container, CFP-128 / ADR-033 §결정 4 확장).
+
+### GitHub native (3종)
 
 - **Dependabot alerts** — `gh api repos/<owner>/<repo>/dependabot/alerts` (의존성 CVE)
 - **CodeQL findings** — `gh api repos/<owner>/<repo>/code-scanning/alerts` (정적 분석)
 - **Secret Scanning** — `gh api repos/<owner>/<repo>/secret-scanning/alerts` (credential 노출)
 - **Push Protection** 차단 이력 — Secret Scanning alerts에서 `push_protection_bypassed_by` 필드
+
+### Container (2종, CFP-128 / ADR-033 추가)
+
+- **trivy — container image CVE / misconfig scan** (CFP-128 / ADR-033)
+  - severity threshold: `CRITICAL,HIGH` (default)
+  - mitigation: `--ignore-unfixed` (base image CVE 빠른 변동 false-positive 회피)
+  - SARIF upload to GitHub Security tab → `gh api repos/<owner>/<repo>/code-scanning/alerts?tool_name=trivy` 로 fetch (CodeQL findings 와 동일 endpoint, `tool_name` filter)
+- **hadolint — Dockerfile static lint** (CFP-128 / ADR-033)
+  - failure-threshold: `warning` (info-level pass)
+  - 적용 대상: `.claude/_overlay/project.yaml` `infra_strategy: docker_first` consumer 의 Dockerfile
+  - SARIF upload to GitHub Security tab → trivy 와 동일 fetch endpoint, `tool_name=hadolint` filter
+
+reusable workflow: [`mclayer/plugin-codeforge/templates/github-workflows/container-image-scan.yml`](https://github.com/mclayer/plugin-codeforge/blob/main/templates/github-workflows/container-image-scan.yml).
+
+### Activation 조건
+
+trivy / hadolint 는 **`infra_strategy: docker_first` consumer 만 active**. project.yaml 에 미설정 또는 다른 strategy 인 경우 PL 이 본 2종 fetch skip 가능 (3 GitHub native 만 의무). consumer overlay 검출 책임 = PL.
 
 `<owner>/<repo>`는 [`.claude/_overlay/project.yaml`](../docs/project-config-schema.md) `github.org` / `github.repo`에서 추출.
 
@@ -82,11 +101,17 @@ review_packet:
     - "HIGH CVE → P1"
     - "약한 crypto · nonce 재사용 · ECB → P1"
     - "PII/금융/헬스 데이터 로그·response 유출 → P1"
+    - "trivy CRITICAL CVE (container image) → P0"           # CFP-128 / ADR-033
+    - "trivy HIGH CVE (container image) → P1"               # CFP-128 / ADR-033
+    - "hadolint error (Dockerfile syntax) → P0"             # CFP-128 / ADR-033
+    - "hadolint warning (Dockerfile best practice) → P1"    # CFP-128 / ADR-033
   first_layer_findings:
     dependabot: <fetched alerts>
     codeql: <fetched findings>
     secret_scan: <fetched alerts>
     push_protection: <fetched bypass events>      # optional
+    trivy: <fetched container CVE/misconfig findings>           # CFP-128 / ADR-033 — docker_first consumer 만
+    hadolint: <fetched Dockerfile lint findings>                # CFP-128 / ADR-033 — docker_first consumer 만
   story_key: <STORY_KEY>
   related_adrs: <Story §3에서 추출>
 ```
@@ -138,7 +163,9 @@ FIX → Orchestrator → DeveloperPL 1차 원인 진단 → ArchitectPLAgent 최
 ## 제약 (base §8 외 lane-specific)
 
 - **구현 리뷰·구현 테스트 lane 관여 금지** — 각 PL이 판정
-- **1차 layer fetch 의무 누락 금지** — 워커 스폰 전 4종(Dependabot/CodeQL/Secret Scanning/Push Protection) 결과 packet에 첨부 필수
+- **1차 layer fetch 의무 누락 금지** — 워커 스폰 전 도구 결과 packet 에 첨부 필수
+  - GitHub native 3종 (Dependabot / CodeQL / Secret Scanning) + Push Protection 이력 = **항상 의무**
+  - trivy / hadolint = `infra_strategy: docker_first` consumer **만 의무** (CFP-128 / ADR-033)
 
 ## 활용 플러그인/스킬 (base §9 외 lane-specific)
 
