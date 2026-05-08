@@ -9,14 +9,24 @@ related_adrs:
   - ADR-001 (review-agent-unification — lane-agnostic worker)
   - ADR-008 (Inter-plugin Contract Versioning)
   - ADR-010 (Inter-plugin Contract Sibling Sync)
-  - ADR-022 (carrier — Sonnet review-verdict decider + consumer scope, in plugin-codeforge wrapper repo)
+  - ADR-022 (carrier — Sonnet review-verdict decider + consumer scope, in plugin-codeforge wrapper repo) [Deprecated 2026-05-08, CFP-134]
+  - ADR-035 (codeforge agent teams Epic architecture — D1 ADR-022 deprecate, in plugin-codeforge wrapper repo)
 authors:
   - CFP-61 Phase 1B-1 — review-verdict v2 → v3 BREAKING (Sonnet decider trigger 5 introduction)
+  - CFP-135 (2026-05-08) — DEPRECATED PASSTHROUGH annotation (ADR-022 deprecate consequence, sibling-backfill from wrapper)
 ---
+
+> **DEPRECATED PASSTHROUGH (2026-05-08, CFP-134 / ADR-035)**: ADR-022 가 Deprecated 처리되어 본 contract 의 Sonnet decider 5-step 영역 (`decision_state` 의 `pending_sonnet`/`decided`/`decider_timeout`/`decider_suspended`/`review_reopen_requested`/`write_partial`/`write_complete` state, `sonnet_final_status` 필드, `decider_decision_ref` 필드, `write_errors` step enum) 은 **NO-OP** 으로 사용. PL 이 자기 lane synthesis 후 `pl_recommendation` (PASS / FIX / FIX_DISCRETIONARY) 직접 적용 — Sonnet final pick 자동 발화 없음. 사용자 explicit request 시에만 ad-hoc Sonnet invoke.
+>
+> review-verdict v4 MAJOR bump 가 본 PASSTHROUGH 영역 정식 제거 — **CFP-137 carrier (Wave 2, deferred)**. Wave 2 진입 전까지 v3 schema body verbatim 보존, transitional 기간 동안 Orchestrator + PL 양쪽 모두 본 NO-OP 영역 미작성 (default 값 또는 absent).
+>
+> Architecture decision SSOT = ADR-035 (Epic CFP-134) at `mclayer/plugin-codeforge/docs/adr/ADR-035-codeforge-agent-teams-epic-architecture.md`. 본 canonical annotation 은 wrapper sibling [PR #257](https://github.com/mclayer/plugin-codeforge/pull/257) 의 sibling-backfill — ADR-010 §단계 절차 정합.
 
 # review_verdict v3 — Inter-plugin Contract (CFP-61 Phase 1B-1)
 
 `codeforge-review` plugin → `codeforge` core (Orchestrator) 단방향 schema. v2와 BREAKING — `status` 필드 의미 shift (PL final → Sonnet final), 신규 `decision_state` state machine, `pl_recommendation` (PL advisory) + `sonnet_final_status` (Sonnet binary) split, `decider_decision_ref` link.
+
+**(CFP-135 DEPRECATED PASSTHROUGH 적용 후)**: 본 BREAKING 변경 중 `pl_recommendation` 만 active. 나머지 (`status` 제거 / `sonnet_final_status` / `decider_decision_ref` / `write_errors` / `writes_completed` 의미 재정의) 는 NO-OP — frontmatter 위 deprecation note 참조.
 
 **상위 SSOT 위치**:
 - `mclayer/plugin-codeforge-review/docs/inter-plugin-contracts/review-verdict-v3.md`: **canonical** (this file)
