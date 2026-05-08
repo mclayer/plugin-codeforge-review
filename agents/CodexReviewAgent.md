@@ -194,5 +194,26 @@ findings:
 
 보고는 Orchestrator가 수령, Claude 보고와 함께 호출 PL에 투입.
 
+## Agent Teams Integration (CFP-137 / ADR-036)
+
+### SendMessage 사용 (agent teams enabled context)
+
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env enabled 시:
+- Lane PL (DesignReviewPL / CodeReviewPL / SecurityTestPL) ↔ 2 worker (ClaudeReviewAgent + CodexReviewAgent) continuous dialog
+- Adversarial-debate pattern (Claude vs Codex worker — finding cross-validation, dedup)
+- PL = final pl_recommendation 직접 작성 (review-verdict-v4, decider field 제거)
+- Default subagent context = spawn-return one-shot (legacy 호환)
+
+### Worktree path 주입 (CFP-136 / ADR-035)
+
+매 lane spawn 시 Orchestrator 가 worktree 생성 + cwd 주입:
+- Path: `$HOME/.claude/worktrees/<repo>/cfp-NNN/<review-lane>/<worker>` (PL / claude-worker / codex-worker)
+- Hierarchical branch: `cfp-NNN/{design-review,code-review,security-test}[/<sub>]`
+- File 충돌 회피 (review evidence 누적 시)
+
+### Team-spec reference
+
+본 lane 의 teammate roster + sendmessage_peers 는 wrapper repo 의 [`templates/team-spec-{design-review,code-review,security-test}.yaml`](https://github.com/mclayer/plugin-codeforge/blob/main/templates/) 참고. PL final write = `review-verdict-v4` contract (CFP-137 BREAKING bump — decider field 제거).
+
 ## 문서화 표준
 GitHub Issue/PR/docs write 권한 없음. 모든 문서화는 Orchestrator 경유 DocsAgent가 기록. 문서화 표준은 [DocsAgent.md](DocsAgent.md) 참조.
