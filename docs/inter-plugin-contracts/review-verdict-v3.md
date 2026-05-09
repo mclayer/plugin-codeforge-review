@@ -1,7 +1,8 @@
 ---
 kind: contract
 contract_version: "3.0"
-status: Active
+status: Archived
+superseded_by: review-verdict-v4
 related_plugins:
   - codeforge (wrapper, consumer of FIX routing data + Orchestrator self-write post-Sonnet)
   - codeforge-review (lane plugin, producer + synthesizer; final gate write authority transferred to Orchestrator per CFP-61)
@@ -11,16 +12,18 @@ related_adrs:
   - ADR-010 (Inter-plugin Contract Sibling Sync)
   - ADR-022 (carrier — Sonnet review-verdict decider + consumer scope, in plugin-codeforge wrapper repo) [Deprecated 2026-05-08, CFP-134]
   - ADR-035 (codeforge agent teams Epic architecture — D1 ADR-022 deprecate, in plugin-codeforge wrapper repo)
+  - ADR-044 (Phase-scoped sequential team SSOT — review-verdict v4 cutover carrier, CFP-137, in plugin-codeforge wrapper repo)
 authors:
   - CFP-61 Phase 1B-1 — review-verdict v2 → v3 BREAKING (Sonnet decider trigger 5 introduction)
   - CFP-135 (2026-05-08) — DEPRECATED PASSTHROUGH annotation (ADR-022 deprecate consequence, sibling-backfill from wrapper)
+  - CFP-137 (2026-05-09) — Archived (review-verdict v4 cutover, Sonnet decider 영역 정식 제거; canonical sibling sync from wrapper PR #284)
 ---
 
-> **DEPRECATED PASSTHROUGH (2026-05-08, CFP-134 / ADR-035)**: ADR-022 가 Deprecated 처리되어 본 contract 의 Sonnet decider 5-step 영역 (`decision_state` 의 `pending_sonnet`/`decided`/`decider_timeout`/`decider_suspended`/`review_reopen_requested`/`write_partial`/`write_complete` state, `sonnet_final_status` 필드, `decider_decision_ref` 필드, `write_errors` step enum) 은 **NO-OP** 으로 사용. PL 이 자기 lane synthesis 후 `pl_recommendation` (PASS / FIX / FIX_DISCRETIONARY) 직접 적용 — Sonnet final pick 자동 발화 없음. 사용자 explicit request 시에만 ad-hoc Sonnet invoke.
+> **ARCHIVED (2026-05-09, CFP-137 / ADR-044)**: 본 contract 가 [review-verdict v4](review-verdict-v4.md) 으로 superseded 됨. v4 가 v3 의 NO-OP passthrough 영역 (Sonnet decider) 정식 제거 + 신규 `worker_dialog_rounds` field 추가. 즉시 cutover (consumer scope 0건). v4 = `pl_recommendation` 자체가 final verdict (PL = decider 책임자 복원). v3 본문은 archive reference 로 보존 — 6 CFP 무사고 후 별도 cleanup CFP 에서 file 삭제 (v2 deprecate 패턴 정합).
 >
-> review-verdict v4 MAJOR bump 가 본 PASSTHROUGH 영역 정식 제거 — **CFP-137 carrier (Wave 2, deferred)**. Wave 2 진입 전까지 v3 schema body verbatim 보존, transitional 기간 동안 Orchestrator + PL 양쪽 모두 본 NO-OP 영역 미작성 (default 값 또는 absent).
+> **(이전 annotation)** DEPRECATED PASSTHROUGH (2026-05-08, CFP-134 / ADR-035): ADR-022 가 Deprecated 처리되어 본 contract 의 Sonnet decider 5-step 영역 (`decision_state` 의 `pending_sonnet`/`decided`/`decider_timeout`/`decider_suspended`/`review_reopen_requested`/`write_partial`/`write_complete` state, `sonnet_final_status` 필드, `decider_decision_ref` 필드, `write_errors` step enum) 은 **NO-OP** 으로 사용. PL 이 자기 lane synthesis 후 `pl_recommendation` (PASS / FIX / FIX_DISCRETIONARY) 직접 적용 — Sonnet final pick 자동 발화 없음. 사용자 explicit request 시에만 ad-hoc Sonnet invoke. (본 transitional 영역 = CFP-137 wrapper Phase 1 PR merge 시 종료, v4 cutover 적용.)
 >
-> Architecture decision SSOT = ADR-035 (Epic CFP-134) at `mclayer/plugin-codeforge/docs/adr/ADR-035-codeforge-agent-teams-epic-architecture.md`. 본 canonical annotation 은 wrapper sibling [PR #257](https://github.com/mclayer/plugin-codeforge/pull/257) 의 sibling-backfill — ADR-010 §단계 절차 정합.
+> Architecture decision SSOT = [ADR-035](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-035-codeforge-agent-teams-epic-architecture.md) (Epic CFP-134) + [ADR-044](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-044-phase-scoped-sequential-team.md) (CFP-137 v4 carrier, in plugin-codeforge wrapper repo). 본 canonical annotation 은 wrapper sibling [PR #284](https://github.com/mclayer/plugin-codeforge/pull/284) 의 sibling sync — ADR-010 §단계 절차 정합 (wrapper-first).
 
 # review_verdict v3 — Inter-plugin Contract (CFP-61 Phase 1B-1)
 

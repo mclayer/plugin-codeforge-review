@@ -4,6 +4,26 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
+## [Unreleased] - sibling sync follow-up
+
+### CFP-137 — review-verdict v4 canonical mirror (sibling sync follow-up)
+
+Wrapper Phase 1 PR (mclayer/plugin-codeforge#284) 의 review-verdict v4 cutover 의 ADR-010 sibling sync follow-up. canonical (본 plugin) 측 v4 mirror 신설 + v3 status flip.
+
+### Added
+
+- `docs/inter-plugin-contracts/review-verdict-v4.md` (NEW, canonical) — wrapper sibling verbatim mirror. `pl_recommendation` 자체가 final verdict + 신규 `worker_dialog_rounds` field (Adversarial debate measurable verification). 4-step Orchestrator algorithm (v3 5-step → 4-step).
+
+### Changed
+
+- `docs/inter-plugin-contracts/review-verdict-v3.md` `status: Active → Archived` (v4 cutover, CFP-137 wrapper Phase 1 PR merge 시점). Frontmatter `superseded_by: review-verdict-v4` + ADR-044 cross-ref + CFP-137 author entry. Body annotation 갱신: 이전 DEPRECATED PASSTHROUGH (CFP-134 / ADR-035) 영역 = v4 cutover 시 종료 명시.
+
+### Notes
+
+- v4 ADR carrier = mclayer/plugin-codeforge `docs/adr/ADR-044-phase-scoped-sequential-team.md` (CFP-137). ADR ID 가 ADR-041 → ADR-044 retro-renumber 된 사유: CFP-276 (PR #279 merged) 가 ADR-041 = doc-location-registry 선점, PR #283 (open) 가 ADR-042 + ADR-043 점유. createdAt earlier wins.
+- `templates/review-pl-base.md` v3 → v4 schema 갱신은 별도 follow-up PR — 본 PR 은 contract canonical 신설 + v3 archive 만 (CFP-137 sibling sync 1차 wave).
+- ADR-011 inter-plugin-drift CI invariant: 본 PR merge 후 wrapper PR #284 의 `inter-plugin-drift (CFP-E)` check 가 PASS 로 flip (canonical 부재 → 존재).
+
 ## [1.1.0] - 2026-05-07
 
 ### CFP-128 / ADR-033 — Container security 1st-layer (trivy + hadolint)
