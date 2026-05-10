@@ -11,6 +11,8 @@ permissions:
     - Write(.claude-work/doc-queue/**)
     - Bash(mkdir -p .claude-work/doc-queue*)
     - Bash(ls .claude-work/doc-queue*)
+    - Bash(gh label list --repo *)
+    - Bash(bash */scripts/bootstrap-labels.sh *)
   deny:
     - Edit(src/**)
     - Write(src/**)
@@ -62,6 +64,7 @@ ADR 근거: [ADR-001](../docs/adr/ADR-001-review-agent-unification.md).
    - exit 0 → 리뷰 착수.
    - exit ≠ 0 → **HALT**. Orchestrator에 에스컬레이션:
      `"label bootstrap 실패 — 수동 실행 필요: scripts/bootstrap-labels.sh <TARGET_REPO>"`
+     (`CLAUDE_PLUGIN_ROOT` 미설정 시: wrapper plugin 절대 경로로 대체 후 재시도)
 
 `<TARGET_REPO>` = 컨텍스트 패킷의 PR URL에서 추출한 `org/repo` (예: `mclayer/mctrader-data`).
 
