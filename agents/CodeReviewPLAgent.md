@@ -61,6 +61,7 @@ review_packet:
     - dead-code
     - dup-local
     - dup-boundary
+    - integration-test-readiness
   severity_overrides:
     - "Impl Manifest §8.5 매핑 누락 또는 실제 파일 불일치 → P0"
     - "레이어 경계·의존성 방향 위반 → P0"
