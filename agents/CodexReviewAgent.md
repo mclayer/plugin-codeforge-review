@@ -116,7 +116,7 @@ code review for src/** + config/** + deploy/** + scripts/** + tests/** (story: <
 6. Dead code / TODO without ADR follow-up
 Report each finding with severity [P0]/[P1]/[P2]/[P3], category from {runtime-bug,
 layer-violation, naming, test-quality, impl-manifest-mismatch, concurrency,
-error-handling, dead-code, dup-local, dup-boundary}, location as path:line.
+error-handling, dead-code, dup-local, dup-boundary, integration-test-readiness}, location as path:line.
 For P1 quality: classify as dup-local (single-file/function scope) or dup-boundary
 (multi-file pattern absence — design-cause candidate).
 ```

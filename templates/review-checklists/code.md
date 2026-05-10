@@ -11,7 +11,7 @@ CodeReviewPLAgent가 ClaudeReviewAgent / CodexReviewAgent에 packet으로 주입
 
 ## Category enum (출력 분류)
 
-`runtime-bug | layer-violation | naming | test-quality | impl-manifest-mismatch | concurrency | error-handling | dead-code | dup-local | dup-boundary`
+`runtime-bug | layer-violation | naming | test-quality | impl-manifest-mismatch | concurrency | error-handling | dead-code | dup-local | dup-boundary | integration-test-readiness`
 
 ## Severity 자동 룰
 
@@ -57,6 +57,18 @@ CodeReviewPLAgent가 ClaudeReviewAgent / CodexReviewAgent에 packet으로 주입
 
 - 도달 불가 코드 · 사용되지 않는 import/변수
 - TODO/FIXME 미해결 (Change Plan에 후속 ADR 명시 없으면 P1)
+
+### 7. 통합테스트 사전 조건 (`integration-test-readiness`)
+
+CFP-367 / ADR-055 — IntegrationTestAgent 진입 전 CodeReviewPL이 검증하는 통합테스트 준비 항목.
+
+- **§8.6 Integration Test Contract 존재 여부**: Story §8.6이 `N/A`가 아닌 경우 → `docker-compose.test.yml` 존재 필수 (누락 시 P1)
+  - 대상: 컴포넌트 경계 2개 이상 변경 Story
+  - 체크: 레포 루트 또는 `deploy/` 하위에 `docker-compose.test.yml` 파일 존재 확인
+  - 없으면: P1 `integration-test-readiness` — "§8.6에 environment_dependencies 명시됐으나 docker-compose.test.yml 없음"
+- **§8.6 면제 Story**: §8.6에 `N/A — <근거>` 명시된 경우 본 섹션 체크 생략
+
+> **참고**: `tests/integration/<story-key>/` 파일 존재는 IntegrationTestAgent가 lane 6에서 직접 작성하므로 CodeReviewPL이 blocking하지 않는다. InfraEngineerAgent가 작성해야 하는 `docker-compose.test.yml`만 체크 대상.
 
 ## 다음 게이트 (PASS 시)
 
