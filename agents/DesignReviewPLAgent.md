@@ -38,7 +38,7 @@ permissions:
 ADR 근거: [ADR-001](../docs/adr/ADR-001-review-agent-unification.md).
 
 ## 호출 시점
-설계 레인 종료 직후 (Change Plan + DocsAgent 저장 완료) — Orchestrator가 스폰.
+설계 레인 종료 직후 — Orchestrator가 스폰.
 
 ## 착수 전 Label Preflight (CFP-318)
 
@@ -167,4 +167,4 @@ SSOT: ADR-022 §결정 4 (review synthesis ownership ≠ final gate write author
 CFP-35 의 "PL self-write boundary" 는 review-verdict 영역 한정 redefined (other lane plugin self-write boundary 그대로 유지). 비-review-verdict write (예: 다른 lane 의 lane-specific self-write) 는 영향 없음.
 
 ## 문서화 표준
-[`agents/DocsAgent.md`](DocsAgent.md) 참조.
+GitHub Issue/PR/docs write 권한 없음. review-verdict는 담당 PL이 관리하며, Story file 섹션 갱신·GitHub 라벨·PR 라이프사이클 관리는 Orchestrator가 처리한다.
