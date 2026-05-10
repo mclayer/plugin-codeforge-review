@@ -11,6 +11,8 @@ permissions:
     - Write(.claude-work/doc-queue/**)
     - Bash(mkdir -p .claude-work/doc-queue*)
     - Bash(ls .claude-work/doc-queue*)
+    - Bash(gh label list --repo *)
+    - Bash(bash */scripts/bootstrap-labels.sh *)
   deny:
     - Edit(src/**)
     - Write(src/**)
@@ -36,6 +38,34 @@ ADR 근거: [ADR-001](../docs/adr/ADR-001-review-agent-unification.md).
 
 ## 호출 시점
 구현 레인 완료 + Architect 매핑표 감사 PASS 후 Orchestrator 스폰.
+
+## 착수 전 Label Preflight (CFP-318)
+
+리뷰 착수 전, 아래 2단계를 순서대로 실행한다.
+중단 시 Orchestrator에 즉시 에스컬레이션 — 자체 복구 시도 금지.
+
+1. **Label 존재 확인**: 대상 repo에 codeforge gate label 세트가 있는지 확인.
+
+   ```bash
+   gh label list --repo <TARGET_REPO> --limit 200 --json name \
+     -q '.[].name' | grep -qE "^gate:"
+   ```
+
+   - 결과 = found (exit 0) → 다음 단계 진행.
+   - 결과 = not found (exit 1) → Step 2 실행.
+
+2. **Label bootstrap 실행**: idempotent 스크립트로 전체 codeforge label 세트 생성.
+
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/codeforge/scripts/bootstrap-labels.sh" <TARGET_REPO>
+   ```
+
+   - exit 0 → 리뷰 착수.
+   - exit ≠ 0 → **HALT**. Orchestrator에 에스컬레이션:
+     `"label bootstrap 실패 — 수동 실행 필요: scripts/bootstrap-labels.sh <TARGET_REPO>"`
+     (`CLAUDE_PLUGIN_ROOT` 미설정 시: wrapper plugin 절대 경로로 대체 후 재시도)
+
+`<TARGET_REPO>` = 컨텍스트 패킷의 PR URL에서 추출한 `org/repo` (예: `mclayer/mctrader-data`).
 
 ## 워커 packet 작성 (lane=code)
 
