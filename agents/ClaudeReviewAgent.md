@@ -194,4 +194,4 @@ PL packet에 checklist_path와 category_enum이 누락. generic fallback 금지 
 - `superpowers:verification-before-completion` — PASS 판정 전 evidence 확인
 
 ## 문서화 표준
-GitHub Issue/PR/docs write 권한 없음. 보고는 Orchestrator 경유 DocsAgent가 기록. 문서화 표준은 [DocsAgent.md](DocsAgent.md) 참조.
+GitHub Issue/PR/docs write 권한 없음. 리뷰 findings는 담당 ReviewPL에 반환한다.
