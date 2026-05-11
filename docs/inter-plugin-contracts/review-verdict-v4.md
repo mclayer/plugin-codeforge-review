@@ -12,8 +12,10 @@ related_adrs:
   - ADR-022  # Deprecated by ADR-035 — Sonnet decider 영역 본 v4 에서 정식 제거
   - ADR-035  # codeforge agent teams Epic architecture (D2 implementation level)
   - ADR-044  # Phase-scoped sequential team SSOT (본 v4 carrier)
+  - ADR-059  # debate-protocol-v1 — anchor_id field 가 stable identifier 로 의존 (CFP-391)
 authors:
   - CFP-137 (2026-05-09) — review-verdict v3 → v4 MAJOR bump (Sonnet decider 영역 정식 제거 + worker_dialog_rounds 추가)
+  - CFP-391 (2026-05-11) — findings[].anchor_id optional field 추가 (debate-protocol-v1 stable identifier SSOT 정합, FIX-1)
 ---
 
 # review_verdict v4 — Inter-plugin Contract (CFP-137 / ADR-044)
@@ -49,13 +51,21 @@ review_verdict:
   story_key: <STORY_KEY>
   iteration: <int>
   
-  findings:                          # v3 그대로 (배열, severity/category/file/evidence/suggestion)
+  findings:                          # v3 그대로 (배열, severity/category/file/evidence/suggestion) + anchor_id NEW
     - severity: P0 | P1 | P2
       category: <packet category_enum 중 하나>
       file: <path>
       line: <int>
       evidence: <markdown>
       suggestion: <markdown>
+      anchor_id: <string>            # NEW (optional) — finding 의 stable identifier
+                                     # 형식: `<file>:<line>` (예: `src/foo.py:42`)
+                                     #     또는 `§<section-ref>` (예: `§7.4`)
+                                     #     또는 wrapper-defined hash (e.g., sha1(file+line+evidence)[:12])
+                                     # 용도: debate-protocol-v1 (ADR-059 §결정 2/4) 이 stable identifier 로 의존
+                                     #       — Codex worker counter-arg 가 동일 finding 을 anchor_id 로 reference
+                                     # Producer 가 채움 (PL synthesis 시점). 미제공 시 PL 이 hash 로 auto-generate 가능
+                                     # 동일 (story_key, lane, iteration) 안에서 unique 권장 (debate cross-ref 정합성)
   
   pl_recommendation: PASS | FIX | FIX_DISCRETIONARY | ESCALATE_PACKET_INCOMPLETE  # v3 유지, 단 final verdict 책무 단독
   
