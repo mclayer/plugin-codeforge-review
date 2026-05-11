@@ -158,6 +158,88 @@ PL이 verdict packet에 **`mechanical_category`** 필드를 추가해 다음 자
 
 ADR 근거: [ADR-033](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-033-docker-first-infra-engineering.md) §결정 4. SecurityTestPLAgent 1차 layer fetch 의무 = [`agents/SecurityTestPLAgent.md`](../agents/SecurityTestPLAgent.md) §"1차 layer fetch 의무".
 
+### Adversarial debate (debate-protocol-v1) — CFP-391 / ADR-059
+
+DesignReview lane 만 자동 발동 (Story 1 scope). Codex worker 가 활성된 상태에서 두 worker review-verdict-v4 packet 수신 후 PL 이 divergence detection 알고리즘 수행 → criteria match 시 debate-protocol-v1 Round dispatch.
+
+본 sub-section 4종 SOP (§3.0~§3.3) 는 DesignReviewPLAgent 의 verdict 합성 알고리즘 일부. CodeReview / SecurityTest lane 은 deferred CFP-C (Codex 활성 후 향후 도입).
+
+#### §3.0 Divergence detection
+
+DesignReviewPL 이 두 워커 review-verdict-v4 packet 수령 후 다음 알고리즘으로 divergence 감지:
+
+```
+for anchor_id in union(claude_findings[*].anchor_id, codex_findings[*].anchor_id):
+    claude_f = find(claude_findings, anchor_id) or None
+    codex_f  = find(codex_findings,  anchor_id) or None
+
+    # Case 1: 한쪽만 발화
+    if claude_f and not codex_f:
+        divergence_type = "recommendation"  # silent = PASS, 발화 = FIX/FIX_DISCRETIONARY
+    elif codex_f and not claude_f:
+        divergence_type = "recommendation"  # silent = PASS, 발화 = FIX/FIX_DISCRETIONARY
+    # Case 2: 양측 발화 — severity 또는 recommendation 비교
+    elif claude_f.severity != codex_f.severity:
+        divergence_type = "severity"
+    elif claude_f.recommendation != codex_f.recommendation:
+        divergence_type = "recommendation"
+    else:
+        divergence_type = None  # aligned, debate 미발동
+```
+
+`criteria: [severity_mismatch, recommendation_mismatch]` (team-spec-design-review.yaml `divergence_detection.criteria`) 정합. anchor 수집은 review-verdict-v4 `findings[].anchor_id` field SSOT.
+
+#### §3.1 Debate dispatch
+
+divergence detection 결과 1개 이상 anchor 에서 divergence_type != None 시 debate-protocol-v1 Round 0 init:
+
+- **Round 0** (init): trigger schema 작성 + 양 worker initial_position 추출 + topic_anchor 원문 캡처
+- **Round 1 ~ N** (max 5):
+  - 매 라운드 입력 최상단 topic_anchor prepend 의무 (drift forcing function)
+  - 매 라운드 system_prompt_appendix verbatim 재주입 (anti-sycophancy directive)
+  - 양 worker output 수신 후 PL 이 `remaining_disagreements` non-empty 검증 + `position_change: true` 시 `position_change_reason` 검증 (invalid → 재발화 요청 1회 한정, EC-3 / EC-4)
+- **min 3 force_continue**: `remaining_disagreements` 비어있고 `dialog_rounds_count < 3` 시 PL 이 adversarial_prompt 재주입 후 Round 추가 (EC-2)
+- **max 5 escalation**: `dialog_rounds_count == 5` 도달 + 미합의 시 PL 이 escalation_packet 으로 AskUserQuestion 발화 (§3.5 정합)
+
+영속화: 매 라운드 output 은 PL 이 in-memory transcript 누적. final verdict 결정 후 termination block 작성 + Story §9 inline append (§3.3 정합).
+
+#### §3.2 Anchor 재발 검사
+
+DesignReview lane 진입 직전 (Round 0 dispatch 전) PL 이 Story §9 scan 으로 anchor_id 재발 검출:
+
+```
+count = grep -c '^### Debate transcript: <anchor_id>\s*$' docs/stories/<KEY>.md
+if count >= 2:
+  termination.method = "anchor_recurrence"
+  → AskUserQuestion escalation (debate Round 진입 없이 즉시)
+```
+
+`>= 2` 시 PL 이 정리한 packet:
+- (a) topic_anchor 원문
+- (b) 이전 debate 최종 verdict + 양측 마지막 라운드 입장
+- (c) ArchitectAgent 가 적용한 redesign 요지
+- (d) 재발 finding 의 새 context (의미적으로 같은 쟁점인지 PL 판단 근거)
+- (e) 사용자 중재 옵션 제시
+
+**EC-7**: ArchitectAgent 수정 후 동일 `anchor_id` 가 발화되었으나 PL 이 명확히 다른 쟁점으로 판단 시 `anchor_recurrence_count` 증가 안 함. 모호 시 사용자 escalation 우선 (안전 방향).
+
+ADR 근거: [ADR-059](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-059-debate-protocol-v1.md) §결정 4.
+
+#### §3.3 Transcript 영속화
+
+debate verdict 가 `FIX` 또는 `FIX_DISCRETIONARY` 시 다음 흐름 강제:
+
+1. **Story §9 inline append**: section header format `### Debate transcript: <anchor_id>` (Story §9 하위 sub-section). schema = trigger / rounds / termination 3 block (debate-protocol-v1 §2 정합)
+   - writer = DesignReviewPL via Orchestrator self-write delegate (ADR-039 Amendment 정합)
+   - 독립 파일 신설 금지 — `doc-locations.yaml` 신규 doc_type 추가 불필요
+2. **§10 FIX Ledger row append** — Orchestrator self-write (fix-event-v1 1.1 contract):
+   - `debate_artifact_ref` 필드 = `#debate-transcript-<anchor_id>` (Story §9 section anchor link)
+3. **ArchitectPLAgent re-spawn** — prompt 에 debate transcript 명시적 주입 (verbatim, 요약 금지)
+4. **ArchitectAgent re-run instruction**: "양측 입장의 reasoning trail 을 반영해 redesign 하라. transcript 의 양보 / 반박 / 미해결 disagreement 를 모두 검토 후 새 change-plan / ADR 작성."
+5. DesignReview re-entry (FIX-N+1) — Story §10 FIX Ledger 카운터 정합
+
+`check-doc-section-schema.sh` (wrapper repo) 가 Story §9 의 `### Debate transcript: ` prefix sub-section 인식 + 내부 schema 검증 (anchor_id non-empty + trigger/rounds/termination 3 block + rounds 최소 1 entry).
+
 ---
 
 ## 4. FIX 카운터 SSOT

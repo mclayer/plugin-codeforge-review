@@ -1,13 +1,13 @@
 ---
 kind: contract
-contract_version: "4.0"
+contract_version: "4.1"
 status: Active
 related_plugins:
   - codeforge (wrapper, consumer of FIX routing data + Orchestrator self-write)
   - codeforge-review (lane plugin, producer + synthesizer + final pl_recommendation author)
 related_adrs:
   - ADR-001  # review-agent-unification — lane-agnostic worker
-  - ADR-008  # Inter-plugin Contract Versioning (MAJOR bump)
+  - ADR-008  # Inter-plugin Contract Versioning (MAJOR/MINOR bump)
   - ADR-010  # Inter-plugin Contract Sibling Sync (canonical/sibling 관계)
   - ADR-022  # Deprecated by ADR-035 — Sonnet decider 영역 본 v4 에서 정식 제거
   - ADR-035  # codeforge agent teams Epic architecture (D2 implementation level)
@@ -16,6 +16,18 @@ related_adrs:
 authors:
   - CFP-137 (2026-05-09) — review-verdict v3 → v4 MAJOR bump (Sonnet decider 영역 정식 제거 + worker_dialog_rounds 추가)
   - CFP-391 (2026-05-11) — findings[].anchor_id optional field 추가 (debate-protocol-v1 stable identifier SSOT 정합, FIX-1)
+  - CFP-391 (2026-05-11) — v4.0 → v4.1 MINOR bump (anchor_id field 추가 = ADR-008 §결정 2 "새 선택 필드 추가" MINOR bump 정합, F-003 follow-up)
+amendment_log:
+  - version: "4.1"
+    date: 2026-05-11
+    cfp: CFP-391
+    type: MINOR
+    summary: "findings[].anchor_id optional field 추가 — debate-protocol-v1 stable identifier 의존. ADR-008 §결정 2 \"새 선택 필드 추가\" = MINOR bump 정합. Runtime impact 없음 (ADR-008 §결정 4 v.x compat 룰 정합)."
+  - version: "4.0"
+    date: 2026-05-09
+    cfp: CFP-137
+    type: MAJOR
+    summary: "v3 → v4 BREAKING — Sonnet decider 영역 (decision_state 8-value enum / sonnet_final_status / decider_decision_ref / write_errors step Sonnet semantics / 5-step Orchestrator algorithm) 정식 제거. PL pl_recommendation 자체가 final verdict. worker_dialog_rounds 추가."
 ---
 
 # review_verdict v4 — Inter-plugin Contract (CFP-137 / ADR-044)

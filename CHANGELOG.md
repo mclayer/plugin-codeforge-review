@@ -4,6 +4,26 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
+## [1.3.0] - 2026-05-11
+
+### CFP-391 — debate-protocol-v1 sibling sync + review-verdict v4.0 → v4.1 MINOR bump
+
+Wrapper Phase 1 PR (mclayer/plugin-codeforge#400) 의 debate-protocol-v1 도입에 대한 codeforge-review canonical sibling sync. wrapper Phase 2 PR (#?, CFP-391 Phase 2) merge 후 follow-up.
+
+### Added
+
+- `templates/review-pl-base.md` §3.0~§3.3 신규 sub-section — debate-protocol-v1 dispatch SOP (Adversarial debate, CFP-391 / ADR-059):
+  - §3.0 Divergence detection — review-verdict-v4 `findings[].anchor_id` field 기반 union iteration + severity/recommendation 분류 알고리즘
+  - §3.1 Debate dispatch — Round 0 init + Round 1~N (max 5) execution + min 3 force_continue + max 5 escalation + EC-2/EC-3/EC-4/EC-7 invariant 정합
+  - §3.2 Anchor 재발 검사 — Story §9 scan + count >= 2 → AskUserQuestion escalation (ADR-059 §결정 4)
+  - §3.3 Transcript 영속화 — Story §9 inline append + §10 FIX Ledger `debate_artifact_ref` field + ArchitectPLAgent re-spawn 4-step
+- `docs/inter-plugin-contracts/review-verdict-v4.md` v4.0 → v4.1 MINOR bump — `findings[].anchor_id` optional field 추가 (debate-protocol-v1 stable identifier 의존). ADR-008 §결정 2 "새 선택 필드 추가" MINOR bump 정합. `amendment_log` 신규 entry 2개 추가 (v4.0 + v4.1).
+
+### Why
+
+- wrapper Phase 1 PR (CFP-391) 가 review-verdict-v4 sibling 측에 `findings[].anchor_id` placeholder field 추가 (FIX-1 of DesignReview Iteration 1) 했으나 canonical sync follow-up 의무 (ADR-010 §단계 절차) + ADR-008 SemVer MINOR bump 의무 (F-003 finding of DesignReview Iteration 2).
+- review-pl-base.md §3.0~§3.3 추가 = DesignReviewPLAgent verdict 합성 알고리즘 의 lane-agnostic 부분 (Story 2 / CFP-392 / Requirements lane 도입 시에도 동일 SOP). codeforge-review canonical SSOT.
+
 ## [Unreleased] - sibling sync follow-up
 
 ### CFP-137 — review-verdict v4 canonical mirror (sibling sync follow-up)
