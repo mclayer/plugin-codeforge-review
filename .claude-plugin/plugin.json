@@ -1,7 +1,7 @@
 {
   "name": "codeforge-review",
-  "version": "1.3.0",
-  "description": "codeforge core의 lane-agnostic review subsystem (3 PL + 2 worker + base + 3 checklist). codeforge core 의존. CFP-35 v2 BREAKING — PL self-write (Story §9 + GitHub comment + gate label 직접). ADR-001 lane-agnostic + ADR-008 contract versioning + CFP-29 추출 + CFP-35 ζ arc retrofit + CFP-318 ReviewPL 착수 전 label preflight: bootstrap-labels.sh 자동 실행 (2026-05-10). + CFP-307 DocsAgent 잔존 참조 제거 (2026-05-10). + CFP-391 review-pl-base §3.0~§3.3 debate-protocol-v1 dispatch SOP + review-verdict v4.0→4.1 MINOR bump (anchor_id field, 2026-05-11).",
+  "version": "1.4.0",
+  "description": "codeforge core의 lane-agnostic review subsystem (3 PL + 2 worker + base + 3 checklist). codeforge core 의존. CFP-35 v2 BREAKING — PL self-write (Story §9 + GitHub comment + gate label 직접). ADR-001 lane-agnostic + ADR-008 contract versioning + CFP-29 추출 + CFP-35 ζ arc retrofit + CFP-318 ReviewPL 착수 전 label preflight: bootstrap-labels.sh 자동 실행 (2026-05-10). + CFP-307 DocsAgent 잔존 참조 제거 (2026-05-10). + CFP-391 review-pl-base §3.0~§3.3 debate-protocol-v1 dispatch SOP + review-verdict v4.0→4.1 MINOR bump (anchor_id field, 2026-05-11). + CFP-438 review-verdict v4.1→4.2 MINOR bump (mechanical_self_check_passed optional bool field, ADR-065, 2026-05-13).",
   "author": {
     "name": "Josh"
   },
