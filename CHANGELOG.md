@@ -4,6 +4,34 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
+## [1.4.0] - 2026-05-13
+
+### CFP-438 — review-verdict v4.1 → v4.2 MINOR bump (mechanical_self_check_passed optional bool field, ADR-065 sibling sync)
+
+Wrapper Phase 1 PR (mclayer/plugin-codeforge cfp-438 branch) ADR-065 신설에 대한 canonical sibling sync (ADR-010 §4 wrapper-first 정합). ArchitectAgent Phase 1 산출물 commit 직전 7-item mechanical sync self-check (non-marketplace 영역) 결과 explicit marker 도입.
+
+#### Added
+
+- `docs/inter-plugin-contracts/review-verdict-v4.md` v4.1 → v4.2 MINOR bump:
+  - `frontmatter` — `contract_version: "4.1" → "4.2"` + `related_adrs` 에 `ADR-065` append + `authors` + `amendment_log` 의 v4.2 entry
+  - `## 2. Schema` — `mechanical_self_check_passed: <bool>` optional field 신설 (design lane only, code/security lane optional/omit 가능)
+  - `## 3. 4-step Orchestrator algorithm` step 1 — `mechanical_self_check_passed 채움` line 추가 (design lane only, ArchitectPLAgent forward)
+  - `## 11. ArchitectAgent Phase 1 mechanical self-check (v4.2 — ADR-065 / CFP-438)` 신설 — 7-item 표 + Producer/Consumer 책무 + 적용 lane + marketplace 영역 분리 (ADR-063 cross-ref)
+
+#### Changed
+
+- `.claude-plugin/plugin.json` — version 1.3.0 → 1.4.0 MINOR (contract schema 변경, ADR-037 정합). description CFP-438 entry append.
+
+#### Why
+
+ADR-065 (wrapper) 의 sibling sync 의무 (ADR-010 §4) — canonical = 본 plugin, sibling = wrapper. ADR-008 §결정 2 "새 선택 필드 추가" = MINOR bump 정합. Runtime impact 없음 (기존 v4.1 consumer 가 본 필드 무시 가능, backward-compat). design lane producer (ArchitectPLAgent) 가 ArchitectAgent §5.5 self-check 결과를 verdict packet 에 forward — false 시 즉시 `pl_recommendation: FIX` + ArchitectAgent re-spawn FIX 루프.
+
+#### Cross-ref
+
+- Wrapper canonical ADR: [ADR-065](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-065-architect-phase1-mechanical-self-check.md)
+- plugin-codeforge-design sibling PR: ArchitectAgent §5.5 + ArchitectPLAgent verdict packet + change-plan §13 신설
+- Wrapper Phase 1 PR (paired sibling): https://github.com/mclayer/plugin-codeforge/pulls
+
 ## [1.3.0] - 2026-05-11
 
 ### CFP-391 — debate-protocol-v1 sibling sync + review-verdict v4.0 → v4.1 MINOR bump
