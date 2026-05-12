@@ -1,4 +1,5 @@
 name: Phase Gate Mergeable (cross-repo)
+# Security: third-party actions are SHA-pinned per CFP-300 policy.
 
 on:
   pull_request:
@@ -14,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Evaluate phase gate (cross-repo Story fetch)
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           # Cross-repo PAT for fetching Story file from any external repo via story_uri PR-body marker.
           # Falls back to GITHUB_TOKEN if PAT not configured (degraded: PR-label-only mode).
@@ -34,7 +35,14 @@ jobs:
 
             let phaseLabel = null;
             let gateLabel = null;
+            let liveTouching = false;  // CFP-123 / ADR-030 — Live Epic lane-entry policy
             let sourceNote = '';
+
+            // CFP-123: Detect live_touching marker from PR body (Phase 1 explicit declare)
+            //   Story frontmatter `live_touching: true` will be parsed below from cross-repo Story fetch.
+            //   PR body marker form: `live_touching: true` (case-insensitive)
+            const prBodyLiveMatch = body.match(/live_touching:\s*true/i);
+            if (prBodyLiveMatch) liveTouching = true;
 
             // 2. Cross-repo Story fetch path (preferred — CFP-45 binding)
             if (storyUriMatch) {
@@ -69,8 +77,10 @@ jobs:
                       const fm = fmMatch[1];
                       const phaseM = fm.match(/^phase:\s*(\S+)/m);
                       const gateM = fm.match(/^gate:\s*(\S+)/m);
+                      const liveM = fm.match(/^live_touching:\s*(true|false)/im);
                       if (phaseM) phaseLabel = phaseM[1].replace(/["']/g, '');
                       if (gateM) gateLabel = gateM[1].replace(/["']/g, '');
+                      if (liveM && liveM[1].toLowerCase() === 'true') liveTouching = true;
                       sourceNote = `Story ${sOwner}/${sRepo}#${sPath} frontmatter`;
                     } else {
                       sourceNote = `Story file fetched but no frontmatter found`;
@@ -106,6 +116,9 @@ jobs:
             // CFP-113 fix: also supplement missing gate from PR labels even if Story
             // provided phase. Story frontmatter typically has `phase:` but not `gate:`
             // (gate is iteration-driven, not Story-fixed).
+            // CFP-123 fix: collect ALL gate:* labels (membership-style), not first-only —
+            //   Live touching Story can carry multiple gates (e.g. gate:security-test-pass + gate:live-entry-pass).
+            let prGateLabels = [];
             if (!phaseLabel || !gateLabel) {
               const { data: prFull } = await github.rest.pulls.get({
                 owner: context.repo.owner,
@@ -114,7 +127,8 @@ jobs:
               });
               const prLabels = prFull.labels.map(l => l.name);
               if (!phaseLabel) phaseLabel = prLabels.find(l => l.startsWith('phase:'));
-              if (!gateLabel) gateLabel = prLabels.find(l => l.startsWith('gate:'));
+              prGateLabels = prLabels.filter(l => l.startsWith('gate:'));
+              if (!gateLabel) gateLabel = prGateLabels[0];  // legacy single-gate display
               const supplementNote = sourceNote ? `${sourceNote}; PR labels supplement` : 'PR labels (no Story binding)';
               sourceNote = supplementNote;
             }
@@ -143,17 +157,31 @@ jobs:
             });
             const allLabels = prFullForEpic.data.labels.map(l => l.name);
             const isEpicLabel = allLabels.includes('type:epic');
+            // CFP-499 / ADR-010 Amendment 4 — sibling-pr label fast-pass.
+            //   wrapper Story 가 sibling repo 에 mechanical mirror sync PR 생성 시,
+            //   sibling PR 은 자체 설계리뷰 evidence 없음 (wrapper Story 의 PASS 결과는 wrapper PR 에 박제).
+            //   Orchestrator 가 sibling-pr label 부착 시 fast-pass — sibling PR 의 design review 정합성 은
+            //   wrapper Story PR 의 design review PASS 가 보증.
+            const isSiblingPr = allLabels.includes('sibling-pr');
+            // CFP-260 / CFP-261 / CFP-262 — scripts/ + CONTRIBUTING.md 추가 (operational tooling, not src code).
+            // Bootstrap script entries / drift check script / version bump CI helper 등 wrapper 운영 도구.
             const isDocOnly = !hasCode && files.every(f =>
               f.filename.endsWith('.md') ||
               f.filename.startsWith('docs/') ||
               f.filename.startsWith('wrapper/') ||
               f.filename.startsWith('.github/') ||
+              f.filename.startsWith('templates/') ||
+              f.filename.startsWith('scripts/') ||
+              f.filename.startsWith('.claude-plugin/') ||
               f.filename === 'CHANGELOG.md' ||
-              f.filename === 'README.md'
+              f.filename === 'README.md' ||
+              f.filename === 'CONTRIBUTING.md'
             );
-            if (isEpicLabel || isDocOnly) {
+            if (isEpicLabel || isSiblingPr || isDocOnly) {
               const reason = isEpicLabel
                 ? `type:epic label fast-pass (CFP-106 #143 fix)`
+                : isSiblingPr
+                ? `sibling-pr label fast-pass (CFP-499 / ADR-010 Amendment 4 — wrapper Story mirror sync PR)`
                 : `doc-only PR fast-pass — files: ${files.map(f=>f.filename).slice(0,3).join(', ')}${files.length>3?'...':''} (CFP-106 #143 fix)`;
               await github.rest.checks.create({
                 owner: context.repo.owner,
@@ -176,18 +204,100 @@ jobs:
               required = { phase: phaseLabel, gate: 'gate:design-review-pass' };
             } else if (phaseLabel === 'phase:보안-테스트' || phaseLabel === '보안-테스트') {
               required = { phase: phaseLabel, gate: 'gate:security-test-pass' };
+            } else if (phaseLabel === 'phase:구현' || phaseLabel === '구현' || phaseLabel === 'phase:구현-리뷰' || phaseLabel === '구현-리뷰') {
+              // CFP-342 fix: Phase 2 PR (구현 phase) — gate:design-review-pass 만 요구
+              // (CFP-317 / ADR-048: security-test gate 기본 불필요, lanes.security_ai:true opt-in만)
+              required = { phase: phaseLabel, gate: 'gate:design-review-pass' };
             } else {
-              // No Story binding or unknown phase — file-based heuristic (legacy)
-              required = hasCode
-                ? { phase: 'phase:보안-테스트', gate: 'gate:security-test-pass' }
-                : { phase: 'phase:설계-리뷰', gate: 'gate:design-review-pass' };
+              // No Story binding — file-based heuristic (legacy).
+              // CFP-317 / ADR-048: code PRs no longer require gate:security-test-pass by default.
+              // GitHub CI handles code quality gate. Design review gate applies universally.
+              required = { phase: 'phase:설계-리뷰', gate: 'gate:design-review-pass' };
             }
 
             const phaseOk = phaseLabel === required.phase;
-            const gateOk = gateLabel === required.gate;
-            const summary = (phaseOk && gateOk)
-              ? `phase + gate satisfied: ${required.phase} + ${required.gate} (source: ${sourceNote})`
-              : `Awaiting: phase=${required.phase} (current=${phaseLabel || 'none'}), gate=${required.gate} (current=${gateLabel || 'none'}) (source: ${sourceNote})`;
+            // CFP-123 fix: gate membership check (PR may carry multiple gates simultaneously)
+            //   Required gate must be PRESENT among PR gate labels — first-label strict equality
+            //   would false-fail when PR carries both gate:security-test-pass + gate:live-entry-pass.
+            let gateOk = prGateLabels.includes(required.gate)
+              || gateLabel === required.gate;  // fallback when prGateLabels not populated (cross-repo Story binding path)
+
+            // CFP-133 fix (#239): if gate label not attached, fall back to PR comment
+            //   recognition. autonomous mode (사용자 directive Sonnet decider 제외) 에서 label
+            //   부착이 누락 — review chain PASS comment 가 PR 에 이미 박제되어 있으면 그것을
+            //   evidence 로 인정. CFP-61/ADR-022 §결정 4 invariant 보존 (PL synthesis only,
+            //   label attachment by Orchestrator) — 단순히 evidence source 확장.
+            //
+            //   Comment prefix mapping (comment-prefix-registry-v1):
+            //     [설계-리뷰] ... PASS  → gate:design-review-pass evidence
+            //     [구현-리뷰] ... PASS  → (gate 무, phase progression 만)
+            //     [구현-테스트] ... PASS|N/A → (gate 무)
+            //     [보안-테스트] ... PASS|N/A → gate:security-test-pass evidence
+            let gateCommentEvidence = null;
+            if (!gateOk) {
+              try {
+                const { data: comments } = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  per_page: 100
+                });
+                // Lane → gate prefix mapping
+                const lanePrefixForGate = {
+                  'gate:design-review-pass': '[설계-리뷰]',
+                  'gate:security-test-pass': '[보안-테스트]'
+                };
+                const targetPrefix = lanePrefixForGate[required.gate];
+                if (targetPrefix) {
+                  const passRegex = new RegExp(
+                    `^\\s*##?\\s*\\${targetPrefix}\\s.*\\b(PASS|N/A)\\b`,
+                    'm'
+                  );
+                  for (const c of comments) {
+                    const body = c.body || '';
+                    if (passRegex.test(body)) {
+                      gateOk = true;
+                      gateCommentEvidence = `${targetPrefix} comment #${c.id}`;
+                      break;
+                    }
+                  }
+                }
+              } catch (e) {
+                // listComments 실패 = silent fallback (label-only 동작 유지)
+              }
+            }
+
+            // CFP-123 / ADR-030: Live Epic lane-entry gate
+            //   When Story / PR is Live touching AND we're at security-test phase (Phase 2 PR merge gate),
+            //   require gate:live-entry-pass label IN ADDITION to gate:security-test-pass.
+            //   Detection: gate:live-entry-pass attached to PR (consumer CI 또는 Orchestrator 부착).
+            const isLivePhase = required.phase === 'phase:보안-테스트' || required.phase === '보안-테스트';
+            const requireLiveEntry = liveTouching && isLivePhase;
+            let liveEntryOk = true;
+            if (requireLiveEntry) {
+              if (prGateLabels.length === 0) {
+                // prGateLabels not populated when Story binding satisfied phase + gate fully —
+                // re-fetch PR labels to verify Live entry gate presence.
+                const { data: prFullForLive } = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number
+                });
+                prGateLabels = prFullForLive.labels.map(l => l.name).filter(l => l.startsWith('gate:'));
+              }
+              liveEntryOk = prGateLabels.includes('gate:live-entry-pass');
+            }
+
+            const allOk = phaseOk && gateOk && liveEntryOk;
+            const liveNote = requireLiveEntry
+              ? (liveEntryOk
+                  ? `, gate:live-entry-pass ✓ (Live touching)`
+                  : `, gate:live-entry-pass MISSING (Live touching Story — ADR-030)`)
+              : '';
+            const evidenceNote = gateCommentEvidence ? ` (evidence: ${gateCommentEvidence})` : '';
+            const summary = allOk
+              ? `phase + gate satisfied: ${required.phase} + ${required.gate}${evidenceNote}${liveNote} (source: ${sourceNote})`
+              : `Awaiting: phase=${required.phase} (current=${phaseLabel || 'none'}), gate=${required.gate} (current=${gateLabel || 'none'})${liveNote} (source: ${sourceNote})`;
 
             await github.rest.checks.create({
               owner: context.repo.owner,
@@ -195,6 +305,6 @@ jobs:
               name: 'phase-gate-mergeable',
               head_sha: pr.head.sha,
               status: 'completed',
-              conclusion: (phaseOk && gateOk) ? 'success' : 'action_required',
+              conclusion: allOk ? 'success' : 'action_required',
               output: { title: 'Phase Gate', summary: summary }
             });
