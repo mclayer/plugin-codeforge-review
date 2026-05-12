@@ -4,6 +4,25 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
+## [1.4.1] - 2026-05-13
+
+### CFP-462-followup — phase-gate-mergeable workflow sync (PATCH)
+
+EPIC-RESULTS CFP-462 §6 carrier #1. Wrapper PR #500 (CFP-499 / ADR-010 Amendment 4 sibling-pr label fast-pass) merge 후 sibling repo backport 누락 detection. CFP-438 4 PR merge 시 codeforge-review 에서 `phase-gate-mergeable` required check name mismatch ACTION_REQUIRED 실증 → branch protection 임시 변경 / 복원 우회 패턴 발생.
+
+#### Changed
+
+- `.github/workflows/phase-gate-mergeable.yml` — wrapper SSOT (`templates/github-workflows/phase-gate-mergeable.yml`) verbatim mirror. CFP-113/123/133/342/499 누락 전체 backport (old version 였음).
+
+#### Why
+
+ADR-010 sibling sync 의무. sibling-pr label fast-pass + CFP-113/123/133/342 정합.
+
+#### Compatibility
+
+- **Wire**: workflow file 만 변경. agent / contract / overlay 영향 없음.
+- **Marketplace sync**: 본 PATCH bump 의 marketplace.json mirror 는 별도 후속 carrier.
+
 ## [1.4.0] - 2026-05-13
 
 ### CFP-438 — review-verdict v4.1 → v4.2 MINOR bump (mechanical_self_check_passed optional bool field, ADR-065 sibling sync)
