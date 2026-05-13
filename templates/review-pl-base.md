@@ -276,6 +276,25 @@ debate verdict 가 `FIX` 또는 `FIX_DISCRETIONARY` 시 다음 흐름 강제:
 
 `check-doc-section-schema.sh` (wrapper repo) 가 Story §9 의 `### Debate transcript: ` prefix sub-section 인식 + 내부 schema 검증 (anchor_id non-empty + trigger/rounds/termination 3 block + rounds 최소 1 entry).
 
+### 4-invariant boundary completeness flag (ADR-068 §결정 2 dual-binding)
+
+DesignReview 와 CodeReview PL 이 `findings[].type: "boundary-completeness"` (review-verdict-v4 v4.3) 로 I-1~I-4 위반을 flag 하는 공통 check table.
+
+| Invariant | DesignReview check | CodeReview check |
+|---|---|---|
+| I-1 API contract semantic completeness | ArchitectAgent §3/§7 docstring template 누락 시 finding | impl docstring ↔ Story §7 enum/state semantics 매핑 검증 |
+| I-2 Cross-module propagation completeness | status enum mapping 표 누락 시 finding | caller (호출 site) 의 enum 분기 처리 누락 시 finding |
+| I-3 Guard placement intent | invariant guard 위치 (unconditional/conditional) ADR 본문 명시 누락 시 finding | impl assertion / pre-condition 위치 ADR 명시와 mismatch 시 finding |
+| I-4 Wording SSOT | Story §3/§7 enum identifier ↔ ADR 본문 wording desync 시 finding | impl enum identifier ↔ Story §7 wording desync 시 finding |
+
+Violation finding type: `boundary-completeness` (review-verdict-v4 v4.3 `findings[].type` literal).
+
+**적용 원칙**:
+- DesignReview = 설계 문서 감사 관점 (§3/§7 기술 방식 완결성 검증)
+- CodeReview = 구현 cross-validate 관점 (impl ↔ 설계 wording / 분기 정합성 검증)
+- Severity default = P1 (boundary-completeness 위반이 구현 오류로 전파될 시 P0 가능)
+- ADR-068 §결정 2: ArchitectAgent 는 `boundary_completeness_self_check_passed: bool` emit (verdict packet), DesignReview/CodeReview PL 은 findings[] 로 cross-validate — 양 채널이 dual-binding 을 구성
+
 ---
 
 ## 4. FIX 카운터 SSOT
