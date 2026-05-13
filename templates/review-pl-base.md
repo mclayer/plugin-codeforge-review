@@ -189,6 +189,42 @@ for anchor_id in union(claude_findings[*].anchor_id, codex_findings[*].anchor_id
 
 `criteria: [severity_mismatch, recommendation_mismatch]` (team-spec-design-review.yaml `divergence_detection.criteria`) 정합. anchor 수집은 review-verdict-v4 `findings[].anchor_id` field SSOT.
 
+#### §3.0.5 dispatch_mode 결정 (debate-protocol-v1 v1.1 — CFP-533 / ADR-059 Amendment 1)
+
+divergence detection 결과 `divergence_detected: true` 시 PL 이 다음 branch logic 으로 dispatch_mode 결정 — Phase 1 verdict 생성 직전, Round 0 dispatch 발동 전 단계:
+
+```
+1. consumer / user ad-hoc explicit request 감지 시:
+   → dispatch_mode = "user_request_only"
+   → trigger schema 작성 후 사용자 dialog 통해 manual dispatch
+2. divergence anchor 들의 file path 추출 + severity 추출:
+   a. single_file_scope = (len(set(anchor.file for anchor in divergence_anchors)) == 1)
+   b. severity_capped = all(anchor.severity in {P1, P2} for anchor in divergence_anchors)
+3. (a) AND (b) 모두 True:
+   → dispatch_mode = "mechanical_fast_path_inline"
+   → debate Round 0 dispatch 안 함
+   → PL inline 판정 (양 worker finding 의 reasoning trail 검토 후 final verdict 결정)
+   → transcript Story §9 append 면제 (debate 미발동)
+   → §10 FIX Ledger row append 의무 보존 (resolution column 에 PL inline reasoning verbose 기록)
+   → debate_artifact_ref = null
+4. (a) OR (b) 미충족 (multi-file 또는 P0 critical):
+   → dispatch_mode = "auto_on_divergence" (표준 multi-round debate)
+   → §3.1 Debate dispatch 진입 (Round 0 init)
+```
+
+**우선순위 룰**: `auto_on_divergence > mechanical_fast_path_inline > user_request_only`. 두 mode 동시 활성 가능 영역 (예: explicit user request + auto-divergence detection) 시 더 강한 쪽 effective.
+
+**조건 모호 시 fallback**: single-file 경계 또는 severity 경계 모호 시 `auto_on_divergence` 채택 (안전 방향 — false negative 회피 우선).
+
+**review-verdict-v4 packet 의 dispatch_mode 필드**: PL 이 Phase 1 verdict packet 작성 시 `trigger.dispatch_mode` 채움 (v1.1 required). `mechanical_fast_path_inline` 채택 시 packet 의 `worker_dialog_rounds: 0` + `findings[]` PL inline judgment 결과 반영.
+
+**FIX 통합 (mechanical_fast_path_inline 시)**: §3.3 Transcript 영속화 절차 면제. 대신 §10 FIX Ledger row 의 resolution column 에 PL inline reasoning verbose 기록 의무 — audit trail 보존 forcing function. ArchitectPLAgent re-spawn 시 §10 row 의 root_cause + resolution column 만으로 redesign context 충족 (debate transcript 부재 인지).
+
+ADR cross-ref:
+- ADR-059 §결정 6 (Amendment 1, CFP-533) — protocol-level dispatch_mode SSOT
+- ADR-044 §결정 2 Amendment 1 — team-spec layer dispatch_mode (별 layer)
+- debate-protocol-v1 v1.1 §3.9 — dispatch_mode 결정 알고리즘 SSOT
+
 #### §3.1 Debate dispatch
 
 divergence detection 결과 1개 이상 anchor 에서 divergence_type != None 시 debate-protocol-v1 Round 0 init:
