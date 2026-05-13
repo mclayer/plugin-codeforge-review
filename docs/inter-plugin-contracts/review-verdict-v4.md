@@ -1,6 +1,6 @@
 ---
 kind: contract
-contract_version: "4.3"
+contract_version: "4.4"
 status: Active
 related_plugins:
   - codeforge (wrapper, consumer of FIX routing data + Orchestrator self-write)
@@ -14,14 +14,20 @@ related_adrs:
   - ADR-044  # Phase-scoped sequential team SSOT (본 v4 carrier)
   - ADR-059  # debate-protocol-v1 — anchor_id field 가 stable identifier 로 의존 (CFP-391)
   - ADR-065  # ArchitectAgent Phase 1 mechanical self-check — mechanical_self_check_passed field (CFP-438)
-  - ADR-068  # Boundary completeness invariants — boundary_completeness_self_check_passed field (CFP-527)
+  - ADR-068  # Boundary completeness invariants — boundary_completeness_self_check_passed field (CFP-527) + Amendment 1 (CFP-528) — I-5 dimensional_empirical_self_check_passed
 authors:
   - CFP-137 (2026-05-09) — review-verdict v3 → v4 MAJOR bump (Sonnet decider 영역 정식 제거 + worker_dialog_rounds 추가)
   - CFP-391 (2026-05-11) — findings[].anchor_id optional field 추가 (debate-protocol-v1 stable identifier SSOT 정합, FIX-1)
   - CFP-391 (2026-05-11) — v4.0 → v4.1 MINOR bump (anchor_id field 추가 = ADR-008 §결정 2 "새 선택 필드 추가" MINOR bump 정합, F-003 follow-up)
   - CFP-438 (2026-05-13) — v4.1 → v4.2 MINOR bump (mechanical_self_check_passed optional bool field 추가, ADR-065)
   - CFP-527 (2026-05-13) — v4.2 → v4.3 MINOR bump (boundary_completeness_self_check_passed optional bool field + findings[].type "boundary-completeness" literal 추가, ADR-068)
+  - CFP-528 (2026-05-13) — v4.3 → v4.4 MINOR bump (dimensional_empirical_self_check_passed optional bool field + findings[].type "dimensional-empirical-gap" literal, ADR-068 Amendment 1)
 amendment_log:
+  - version: "4.4"
+    date: 2026-05-13
+    cfp: CFP-528
+    type: MINOR
+    summary: "dimensional_empirical_self_check_passed optional bool field 추가 + findings[].type enum 에 \"dimensional-empirical-gap\" literal 신설 — ADR-068 Amendment 1 §결정 1 I-5 dimensional empirical grounding invariant carrier. ArchitectAgent 가 §3/§7 작성 시 10 dimension enum (latency/scale/cardinality/throughput/cost/accuracy/lifecycle/volume/rate/count) 의 모든 quantitative parameter 가 `[empirical-source: <ref> | TBD]` annotation 보유 시 true. mechanical_self_check_passed (ADR-065 syntactic) + boundary_completeness_self_check_passed (ADR-068 I-1~I-4) 와 disjoint — 동일 verdict packet 셋 별도 boolean field. ADR-008 §결정 2 정합. Runtime impact 없음 (기존 v4.3 consumer 가 본 필드 무시 가능)."
   - version: "4.3"
     date: 2026-05-13
     cfp: CFP-527
@@ -81,9 +87,10 @@ review_verdict:
     - severity: P0 | P1 | P2
       category: <packet category_enum 중 하나>
       type: <finding_type_enum>      # NEW v4.3 (optional) — finding 유형 literal
-                                     # enum: "general" | "mechanical_sync_required" | "boundary-completeness"
+                                     # enum: "general" | "mechanical_sync_required" | "boundary-completeness" | "dimensional-empirical-gap"
                                      # "boundary-completeness": ADR-068 §결정 2 dual-binding — I-1~I-4 위반
                                      # "mechanical_sync_required": ADR-065 mechanical 7-item 위반 (v4.2)
+                                     # "dimensional-empirical-gap": ADR-068 Amendment 1 §결정 1 I-5 위반 — quantitative parameter empirical-source annotation 누락 (v4.4)
                                      # "general": 일반 finding (default, 미제공 시 동일 의미)
       file: <path>
       line: <int>
@@ -121,7 +128,19 @@ review_verdict:
                                          #   동일 verdict packet 양 별도 boolean field
                                          # 적용 lane: design lane only (DesignReview + CodeReview 는 findings[] 로 cross-validate)
                                          # 미제공 시 (v4.2 producer) → Orchestrator 는 무시 (backward-compat)
-  
+
+  dimensional_empirical_self_check_passed: <bool>  # NEW v4.4 (optional) — ADR-068 Amendment 1 / CFP-528
+                                         # ArchitectAgent §3/§7 작성 시 I-5 dimensional empirical grounding self-check 결과
+                                         # true = 10 dimension enum (latency/scale/cardinality/throughput/cost/
+                                         #        accuracy/lifecycle/volume/rate/count) 의 모든 quantitative parameter 가
+                                         #        `[empirical-source: <ref>]` 또는 `[empirical-source: TBD]` annotation 보유
+                                         # false = 1+ 누락 — FIX 의무 (ArchitectAgent re-spawn)
+                                         # mechanical_self_check_passed (ADR-065 syntactic 7-item) +
+                                         #   boundary_completeness_self_check_passed (ADR-068 I-1~I-4) 와 disjoint —
+                                         #   동일 verdict packet 셋 별도 boolean field
+                                         # 적용 lane: design lane only (DesignReview + CodeReview 는 findings[] 로 cross-validate)
+                                         # 미제공 시 (v4.3 producer) → Orchestrator 는 무시 (backward-compat)
+
   worker_dialog_rounds: <int>        # NEW — Adversarial debate SendMessage round count
                                      # 0 = no Codex worker (default subagent context 또는 user_request_only 미요청)
                                      # >= 1 = SendMessage round 발화 횟수
@@ -318,3 +337,42 @@ ADR-022 Deprecated 후 (CFP-134 / ADR-035) Sonnet decider 자동 발동 무효 �
 **Changelog**:
 
 - v4.3 (2026-05-13, CFP-527): `boundary_completeness_self_check_passed` optional bool field 추가 + `findings[].type: "boundary-completeness"` literal 신설. ADR-068 §결정 2 dual-binding carrier. ADR-065 (mechanical syntactic) 와 disjoint — verdict packet 양 별도 boolean field.
+
+## 13. Dimensional empirical grounding self-check (v4.4 — ADR-068 Amendment 1 / CFP-528)
+
+`dimensional_empirical_self_check_passed` optional bool field 가 ArchitectAgent §3/§7 작성 시 I-5 dimensional empirical grounding self-check 결과 explicit marker:
+
+| Dimension | Examples | Empirical source 후보 |
+|---|---|---|
+| latency | timeout / TTL / response_time / push_interval | wiretap script / probe artifact / RFC standard / vendor SLA |
+| scale | batch_size / payload_size_bytes | sample run output / API spec |
+| cardinality | max_connections / concurrent_users | load test result / capacity plan |
+| throughput | rps / msgs_per_sec | benchmark / observation log |
+| cost | token_budget / monthly_cost_usd | pricing doc / billing dashboard |
+| accuracy | precision / sample_rate | statistical analysis |
+| lifecycle | retention_days / expiry_seconds | compliance policy / RFC |
+| volume | storage_gb / log_retention | capacity plan |
+| rate | sample_rate / hit_rate | observation log |
+| count | max_retries / queue_size | empirical tuning / RFC |
+
+**Trigger 4종** (anti-pattern entry condition): empirical-absent default / synthetic guess / industry-assumption transplant / legacy inertia
+
+**Mitigation 4종**: empirical-first (wiretap step 의무화) / explicit TBD 박제 / range-bound default / dimensional checklist
+
+**Justification 조건** (annotation 면제): well-defined SLA / standardized protocol RFC / vendor doc explicit guarantee — 3종 부재 시 annotation 의무
+
+**Exemption** (trivial decision): SLA/quantitative metric 무관 (logging / naming / refactoring) — Story §1 명시 선언 의무
+
+**Producer 책무 (ArchitectPLAgent)**:
+- ArchitectAgent I-5 self-check 통과 후 결과 수령
+- packet `dimensional_empirical_self_check_passed` 채움 (true = 모든 quantitative parameter annotation 보유, false = 1+ 누락)
+- false 시 `pl_recommendation: FIX` + `findings[]` 에 dimensional-empirical-gap 누락 항목 each row append (severity P1, category `dimensional_empirical_gap`, type `"dimensional-empirical-gap"`)
+
+**Consumer 책무 (Orchestrator)**:
+- false 수신 시: Story §10 FIX Ledger row append → ArchitectPLAgent re-spawn 의뢰
+- true 수신 시: 정상 lane 진행
+- 미제공 (v4.3 producer) 수신 시: 무시 — backward-compat
+
+**Changelog**:
+
+- v4.4 (2026-05-13, CFP-528): `dimensional_empirical_self_check_passed` optional bool field 추가 + `findings[].type: "dimensional-empirical-gap"` literal 신설. ADR-068 Amendment 1 §결정 1 I-5 carrier. ADR-065 (mechanical syntactic) + ADR-068 I-1~I-4 (boundary completeness) 와 disjoint — verdict packet 셋 별도 boolean field.
