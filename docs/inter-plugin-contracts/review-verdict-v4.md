@@ -1,6 +1,6 @@
 ---
 kind: contract
-contract_version: "4.4"
+contract_version: "4.5"
 status: Active
 related_plugins:
   - codeforge (wrapper, consumer of FIX routing data + Orchestrator self-write)
@@ -15,6 +15,7 @@ related_adrs:
   - ADR-059  # debate-protocol-v1 — anchor_id field 가 stable identifier 로 의존 (CFP-391)
   - ADR-065  # ArchitectAgent Phase 1 mechanical self-check — mechanical_self_check_passed field (CFP-438)
   - ADR-068  # Boundary completeness invariants — boundary_completeness_self_check_passed field (CFP-527) + Amendment 1 (CFP-528) — I-5 dimensional_empirical_self_check_passed
+  - ADR-063  # Marketplace atomic invariant — marketplace_sync_declared field (CFP-597 Amendment 1)
 authors:
   - CFP-137 (2026-05-09) — review-verdict v3 → v4 MAJOR bump (Sonnet decider 영역 정식 제거 + worker_dialog_rounds 추가)
   - CFP-391 (2026-05-11) — findings[].anchor_id optional field 추가 (debate-protocol-v1 stable identifier SSOT 정합, FIX-1)
@@ -22,7 +23,13 @@ authors:
   - CFP-438 (2026-05-13) — v4.1 → v4.2 MINOR bump (mechanical_self_check_passed optional bool field 추가, ADR-065)
   - CFP-527 (2026-05-13) — v4.2 → v4.3 MINOR bump (boundary_completeness_self_check_passed optional bool field + findings[].type "boundary-completeness" literal 추가, ADR-068)
   - CFP-528 (2026-05-13) — v4.3 → v4.4 MINOR bump (dimensional_empirical_self_check_passed optional bool field + findings[].type "dimensional-empirical-gap" literal, ADR-068 Amendment 1)
+  - CFP-597 (2026-05-13) — v4.4 → v4.5 MINOR bump (marketplace_sync_declared optional bool field, ADR-063 Amendment 1)
 amendment_log:
+  - version: "4.5"
+    date: 2026-05-13
+    cfp: CFP-597
+    type: MINOR
+    summary: "marketplace_sync_declared optional bool field 추가 — ADR-063 Amendment 1 §결정 9 ArchitectAgent Phase 1 marketplace sync proactive self-check 결과 explicit marker. true = Change Plan §13 안 marketplace_sync_required: true declare 완료 / false = declare 누락 또는 NA (marketplace 영역 변경 0건) / null/omit = v4.4 이전 consumer backward-compat. 적용 lane: design lane only (code/security lane omit 가능). ADR-008 §결정 2 '새 선택 필드 추가' = MINOR bump 정합. Runtime impact 없음 (기존 v4.4 consumer 가 본 필드 무시 가능)."
   - version: "4.4"
     date: 2026-05-13
     cfp: CFP-528
@@ -78,7 +85,7 @@ amendment_log:
 
 ```yaml
 review_verdict:
-  contract_version: "4.0"            # BREAKING marker
+  contract_version: "4.5"            # current version (MINOR bump series from 4.0 BREAKING)
   lane: design | code | security
   story_key: <STORY_KEY>
   iteration: <int>
@@ -140,6 +147,18 @@ review_verdict:
                                          #   동일 verdict packet 셋 별도 boolean field
                                          # 적용 lane: design lane only (DesignReview + CodeReview 는 findings[] 로 cross-validate)
                                          # 미제공 시 (v4.3 producer) → Orchestrator 는 무시 (backward-compat)
+
+  marketplace_sync_declared: <bool>     # NEW v4.5 (optional) — ADR-063 Amendment 1 / CFP-597
+                                         # ArchitectAgent Phase 1 marketplace sync proactive self-check 결과
+                                         # true = Change Plan §13 안 marketplace_sync_required: true declare 완료
+                                         #        (mirrored field 변경 감지 + GitOpsAgent §3.6 spawn 예약)
+                                         # false = declare 누락 또는 NA (marketplace 영역 변경 0건,
+                                         #         Change Plan §13 marketplace_sync_required: false 명시)
+                                         # null/omit = v4.4 이전 consumer backward-compat (Orchestrator 무시)
+                                         # 적용 lane: design lane only (chief author = ArchitectAgent)
+                                         #            code/security lane omit 가능
+                                         # 미제공 시 (v4.4 producer) → Orchestrator 는 무시 (backward-compat)
+                                         # ADR-063 §결정 9 SSOT (2026-05-13 CFP-597 Amendment 1)
 
   worker_dialog_rounds: <int>        # NEW — Adversarial debate SendMessage round count
                                      # 0 = no Codex worker (default subagent context 또는 user_request_only 미요청)

@@ -10,30 +10,25 @@
 
 Wrapper Phase 1 PR (mclayer/plugin-codeforge CFP-582 — Wave 4 ADR-059 Amendment 2) 의 canonical sibling sync (ADR-010 §4 wrapper-first allowed pattern). DesignReview lane 의 review-verdict-v4 findings[] 와 Story §9 debate transcript 간 정합 검증 책무 명시화.
 
-#### Added
+### CFP-597 — review-verdict-v4 canonical v4.4 → v4.5 MINOR bump (marketplace_sync_declared, ADR-063 Amendment 1)
 
-- `templates/review-pl-base.md` — `§11.5. debate-protocol-v1 v1.2 정합 (CFP-582 / ADR-059 Amendment 2)` 섹션 신설:
-  - **3 marker pattern verification** — DesignReviewPL 이 Story §9 `### Debate transcript: <anchor_id>` sub-section 내 3 section header 부재 시 P1 finding 발의 (category `convergence_quality_invariant`):
-    - `[COUNTERARGUMENT]` — Round 1+ 매 라운드 per worker
-    - `[ALTERNATIVE_PROPOSED]` — debate cumulative >= 1
-    - `[DEBATE_PURPOSE_STATEMENT]` — Round 0 only
-  - **convergence_quality_invariant_final 검증** — termination block 의 `invariant_satisfied_at_termination == false` 인데 `final_verdict: PASS` 발화 = P0 finding (`convergence_quality_invariant_violation`)
-  - **Phase 2 mechanical lint cross-ref** — `scripts/check_debate_convergence_quality.py` (후속 carrier) 가 advisory layer 추가
+ADR-063 Amendment 1 (CFP-597) carrier — ArchitectAgent Phase 1 marketplace sync proactive self-check 결과 explicit marker 신규 optional field 추가.
+
+#### Added (CFP-582)
+
+- `templates/review-pl-base.md` — `§11.5. debate-protocol-v1 v1.2 정합 (CFP-582 / ADR-059 Amendment 2)` 섹션 신설
 - `templates/review-pl-base.md` §12 버전 이력 — v3.2 entry append
 
-#### Changed
+#### Added (CFP-597)
 
-- DesignReviewPL 영역 한정 (CodeReview / SecurityTest lane = 영역 외, Story §1 user directive 충실).
+- **review-verdict-v4 canonical v4.4 → v4.5** — `marketplace_sync_declared: bool` optional field 신설 (ADR-063 §결정 9 SSOT, Amendment 1)
+- `related_adrs[]` 에 `ADR-063` entry 추가 (marketplace atomic invariant)
+- `authors[]` + `amendment_log[]` 에 CFP-597 v4.5 entry 추가
 
 #### Compatibility
 
-- **Wire**: review-pl-base.md prompt block 신설만. review-verdict-v4 contract schema 변경 없음 (Amendment 2 자체는 kind:registry debate-protocol-v1 v1.2 영역 — sibling sync 면제이나 review-pl-base lane plugin self-write boundary 의무).
-- **marketplace sync**: 본 MINOR bump 의 marketplace.json mirror 동반 (ADR-063 atomic invariant).
-
-#### Refs
-
-- mclayer/plugin-codeforge — CFP-582 wrapper Phase 1 PR (TBD — Task 12 cross-ref backfill)
-- mclayer/plugin-codeforge-design — architect-pl-spawn blanket invocation sibling PR (TBD)
+- **Wire**: review-pl-base.md prompt block 신설 + review-verdict-v4 v4.5 MINOR (새 optional field). v4.4 이전 consumer backward-compat.
+- **marketplace sync**: mclayer/marketplace#91 (merged 선행 — ADR-063 §결정 2 ordering, CFP-597 codeforge-pmo 0.1.3 sync).
 
 ## [1.5.0] - 2026-05-13
 
