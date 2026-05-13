@@ -532,6 +532,23 @@ GitHub Issue/PR/docs write 책임 분담은 각 lane plugin 의 CLAUDE.md `Self-
 
 ---
 
+## 11.5. debate-protocol-v1 v1.2 정합 (CFP-582 / ADR-059 Amendment 2)
+
+DesignReview lane 의 기존 `auto_on_divergence` (Amendment 1) 외에 wrapper repo 에서 DesignLane blanket trigger (`blanket_cross_module_designlane`) 가 도입됨 — DesignReview lane 자체는 본 Amendment 2 직접 carrier 아님. 단 review-verdict-v4 `findings[]` 와 debate transcript 간 정합 검증 책무 (DesignReviewPL 영역, CodeReview / SecurityTest lane = 영역 외):
+
+1. **3 marker pattern verification (Amendment 2 §결정 8)** — DesignReviewPL 이 PR diff 의 Story §9 debate transcript 영역 (`### Debate transcript: <anchor_id>` sub-section) 발견 시, 3 marker section header 부재 finding 발의 (severity P1, category `convergence_quality_invariant`):
+   - `[COUNTERARGUMENT]` section header — Round 1+ 매 라운드 per worker 의무
+   - `[ALTERNATIVE_PROPOSED]` section header — debate cumulative >= 1 의무
+   - `[DEBATE_PURPOSE_STATEMENT]` section header — Round 0 only 의무
+
+2. **convergence_quality_invariant_final 검증** — Story §9 termination block 의 `convergence_quality_invariant_final.invariant_satisfied_at_termination == false` 인데 `final_verdict: PASS` 발화 = ADR-059 Amendment 2 §결정 8 위반 → P0 finding 발의 (category `convergence_quality_invariant_violation`).
+
+3. **Phase 2 mechanical lint cross-ref** — `scripts/check_debate_convergence_quality.py` (CFP-582 후속 Phase 2 carrier) 가 본 책무를 mechanical regex 으로 보완 — DesignReview lane 의 manual gate 와 병행 (warning tier, ADR-060 evidence-enforceable framework). 본 단락 시점 (Phase 1) 까지는 manual gate 만 active — Phase 2 PR merge 후 mechanical lint 가 advisory layer 추가.
+
+본 책무 source SSOT: wrapper [`docs/inter-plugin-contracts/debate-protocol-v1.md`](https://github.com/mclayer/plugin-codeforge/blob/main/docs/inter-plugin-contracts/debate-protocol-v1.md) v1.2 schema (`convergence_quality_invariant` block + termination `invariant_satisfied_at_termination` boolean) + [`docs/adr/ADR-059-debate-protocol-v1.md`](https://github.com/mclayer/plugin-codeforge/blob/main/docs/adr/ADR-059-debate-protocol-v1.md) Amendment 2 §결정 8 / §결정 9.
+
+---
+
 ## 12. 버전 이력
 
 | Version | Date | Story | 주요 변경 |
@@ -540,3 +557,4 @@ GitHub Issue/PR/docs write 책임 분담은 각 lane plugin 의 CLAUDE.md `Self-
 | v2.0 | CFP-35 | — | §5.4: `contract_version: 2.0`, `status: PASS\|FIX\|FIX_DISCRETIONARY`, `writes_completed` 신설 |
 | v3.0 | 2026-05-02 | CFP-61 | §5.4: `pl_recommendation` (advisory only) + `decision_state`, Orchestrator post-Sonnet self-write 영역 정의, `writes_completed` 의미 재정의 (PL→Orchestrator self-write audit), `decider_decision_ref` object 신설 (decision-packet-v2.1 / ADR-022) |
 | v3.1 | 2026-05-07 | CFP-128 | §3: Container security severity rule append (SecurityTest lane only) — trivy CRITICAL/HIGH/mid + hadolint error/warning/info. ADR-033 §결정 4 sibling sync. |
+| v3.2 | 2026-05-13 | CFP-582 | §11.5: debate-protocol-v1 v1.2 cross-ref block 신설 (ADR-059 Amendment 2) — DesignReviewPL 의 3 marker pattern verification + convergence_quality_invariant_final 검증 책무 + Phase 2 mechanical lint cross-ref. |
