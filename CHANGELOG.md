@@ -4,6 +4,37 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
+## [1.6.0] - 2026-05-13
+
+### CFP-582 — ADR-059 Amendment 2 / debate-protocol-v1 v1.2 sibling sync — review-pl-base.md cross-ref + 3 marker pattern verification (MINOR)
+
+Wrapper Phase 1 PR (mclayer/plugin-codeforge CFP-582 — Wave 4 ADR-059 Amendment 2) 의 canonical sibling sync (ADR-010 §4 wrapper-first allowed pattern). DesignReview lane 의 review-verdict-v4 findings[] 와 Story §9 debate transcript 간 정합 검증 책무 명시화.
+
+#### Added
+
+- `templates/review-pl-base.md` — `§11.5. debate-protocol-v1 v1.2 정합 (CFP-582 / ADR-059 Amendment 2)` 섹션 신설:
+  - **3 marker pattern verification** — DesignReviewPL 이 Story §9 `### Debate transcript: <anchor_id>` sub-section 내 3 section header 부재 시 P1 finding 발의 (category `convergence_quality_invariant`):
+    - `[COUNTERARGUMENT]` — Round 1+ 매 라운드 per worker
+    - `[ALTERNATIVE_PROPOSED]` — debate cumulative >= 1
+    - `[DEBATE_PURPOSE_STATEMENT]` — Round 0 only
+  - **convergence_quality_invariant_final 검증** — termination block 의 `invariant_satisfied_at_termination == false` 인데 `final_verdict: PASS` 발화 = P0 finding (`convergence_quality_invariant_violation`)
+  - **Phase 2 mechanical lint cross-ref** — `scripts/check_debate_convergence_quality.py` (후속 carrier) 가 advisory layer 추가
+- `templates/review-pl-base.md` §12 버전 이력 — v3.2 entry append
+
+#### Changed
+
+- DesignReviewPL 영역 한정 (CodeReview / SecurityTest lane = 영역 외, Story §1 user directive 충실).
+
+#### Compatibility
+
+- **Wire**: review-pl-base.md prompt block 신설만. review-verdict-v4 contract schema 변경 없음 (Amendment 2 자체는 kind:registry debate-protocol-v1 v1.2 영역 — sibling sync 면제이나 review-pl-base lane plugin self-write boundary 의무).
+- **marketplace sync**: 본 MINOR bump 의 marketplace.json mirror 동반 (ADR-063 atomic invariant).
+
+#### Refs
+
+- mclayer/plugin-codeforge — CFP-582 wrapper Phase 1 PR (TBD — Task 12 cross-ref backfill)
+- mclayer/plugin-codeforge-design — architect-pl-spawn blanket invocation sibling PR (TBD)
+
 ## [1.5.0] - 2026-05-13
 
 ### CFP-528 Wave 2B — review-verdict-v4 v4.4 canonical mirror + review-pl-base §3 I-5 rule (sibling sync)
