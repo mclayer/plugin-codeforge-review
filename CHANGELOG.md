@@ -4,6 +4,28 @@
 
 버전 체계: [Semantic Versioning 2.0.0](https://semver.org/lang/ko/). v1.0 이전은 minor bump도 breaking 가능.
 
+## [1.5.0] - 2026-05-13
+
+### CFP-528 Wave 2B — review-verdict-v4 v4.4 canonical mirror + review-pl-base §3 I-5 rule (sibling sync)
+
+ADR-010 sibling sync — wrapper Phase 1 PR mclayer/plugin-codeforge#575 (CFP-528 Wave 2B, ADR-068 Amendment 1 I-5 dimensional empirical grounding) 의 canonical mirror.
+
+#### Added
+
+- **review-pl-base.md §3 I-5 mechanical detection rule** — DesignReviewPL 가 §3 / §7 quantitative parameter (10 dimension enum: latency / scale / cardinality / throughput / cost / accuracy / lifecycle / volume / rate / count) 의 `[empirical-source]` annotation 부재 시 finding emit (severity P1, category `dimensional_empirical_gap`, type `"dimensional-empirical-gap"`). Trigger 4종 / Mitigation 4종 / Justification / Exemption 체계. CodeReviewPL Tier C cross-validate (impl hardcoded numeric vs ADR / Story empirical-source mismatch).
+- **review-verdict-v4 canonical v4.3 → v4.4 mirror** — wrapper sibling (mclayer/plugin-codeforge#575) 변경 byte-identical mirror (ADR-010 sibling sync, canonical owner per ADR-001). `dimensional_empirical_self_check_passed: bool` field + `findings[].type: "dimensional-empirical-gap"` literal + §13 dimensional empirical grounding self-check 신설.
+
+#### Sibling sync
+
+- Source canonical: 본 PR 자체 (codeforge-review = review-verdict canonical owner per ADR-001 / ADR-010)
+- Wrapper sibling: mclayer/plugin-codeforge#575 (이미 OPEN, 본 PR 가 sibling sync follow-up per ADR-010 §4 wrapper-first 절차)
+- Marketplace sync: mclayer/marketplace 별 PR (codeforge-review 1.5.0, ADR-063 atomic invariant 선행 merge 의무)
+
+#### Compatibility
+
+- **Wire**: review-verdict-v4 schema MINOR (new optional field). v4.3 producer / v4.4 consumer 양방향 backward-compat.
+- **Marketplace sync**: 별도 PR (ADR-063 atomic invariant — marketplace sync 선행 merge).
+
 ## [1.4.1] - 2026-05-13
 
 ### CFP-462-followup — phase-gate-mergeable workflow sync (PATCH)

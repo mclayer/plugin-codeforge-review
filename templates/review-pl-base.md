@@ -295,6 +295,34 @@ Violation finding type: `boundary-completeness` (review-verdict-v4 v4.3 `finding
 - Severity default = P1 (boundary-completeness 위반이 구현 오류로 전파될 시 P0 가능)
 - ADR-068 §결정 2: ArchitectAgent 는 `boundary_completeness_self_check_passed: bool` emit (verdict packet), DesignReview/CodeReview PL 은 findings[] 로 cross-validate — 양 채널이 dual-binding 을 구성
 
+### I-5 Dimensional empirical grounding (Amendment 1 — CFP-528, 2026-05-13)
+
+**I-5 (Dimensional empirical grounding)**: §3 / §7 의 quantitative parameter (10 dimension enum: latency / scale / cardinality / throughput / cost / accuracy / lifecycle / volume / rate / count) 마다 `[empirical-source: <ref>]` 또는 `[empirical-source: TBD]` annotation 부재 시 finding emit (severity P1, category `dimensional_empirical_gap`, type `"dimensional-empirical-gap"`). Verification format: empirical-source-annotation.
+
+**Trigger 4종 (anti-pattern entry condition)**:
+- empirical-absent default (#319 RETRO-MCT-104 carrier)
+- synthetic guess
+- industry-assumption transplant
+- legacy inertia
+
+**Mitigation 4종**:
+- empirical-first
+- TBD 박제 (annotation 보존, 후속 측정 채움 carrier)
+- range-bound
+- dimensional checklist
+
+**Justification (annotation 면제)**: well-defined SLA / standardized protocol RFC / vendor doc explicit guarantee.
+
+**Exemption (trivial decision)**: SLA / quantitative metric 무관 — Story §1 명시 선언 의무.
+
+**CodeReviewPL Tier C cross-validate (I-5)**: impl level 의 hardcoded numeric value 가 ADR / Story 의 empirical-source annotation 과 mismatch 시 finding emit (예: ADR 에 `200ms [empirical-source: wiretap]` 박제했는데 impl 에 `30s` hardcode → finding).
+
+**적용 원칙**:
+- DesignReview Tier B (design-review-time) = §3 / §7 quantitative parameter annotation 누락 / mitigation 미적용 detect
+- CodeReview Tier C (code-review-time) = impl ↔ ADR / Story empirical-source 정합성 cross-validate
+- Severity default = P1 (empirical-source 누락이 SLA 위반 / accuracy regression 으로 전파 시 P0 가능)
+- ADR-068 §결정 2 Amendment 1: ArchitectAgent 는 `dimensional_empirical_self_check_passed: bool` emit (verdict packet, review-verdict-v4 v4.4), DesignReview / CodeReview PL 은 `findings[].type: "dimensional-empirical-gap"` 로 cross-validate — boundary-completeness dual-binding 과 동일 패턴
+
 ---
 
 ## 4. FIX 카운터 SSOT
