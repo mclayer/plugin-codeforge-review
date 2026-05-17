@@ -268,7 +268,7 @@ debate verdict 가 `FIX` 또는 `FIX_DISCRETIONARY` 시 다음 흐름 강제:
 1. **Story §9 inline append**: section header format `### Debate transcript: <anchor_id>` (Story §9 하위 sub-section). schema = trigger / rounds / termination 3 block (debate-protocol-v1 §2 정합)
    - writer = DesignReviewPL via Orchestrator self-write delegate (ADR-039 Amendment 정합)
    - 독립 파일 신설 금지 — `doc-locations.yaml` 신규 doc_type 추가 불필요
-2. **§10 FIX Ledger row append** — Orchestrator self-write (fix-event-v1 1.1 contract):
+2. **§10 FIX Ledger row append** — Orchestrator self-write (fix-event-v1 1.3 contract, CFP-842 MINOR sync per ADR-010 §결정 4 — affected_scope enum + affected_paths_with_depth array 2 신규 optional column, backward-compat 100%):
    - `debate_artifact_ref` 필드 = `#debate-transcript-<anchor_id>` (Story §9 section anchor link)
 3. **ArchitectPLAgent re-spawn** — prompt 에 debate transcript 명시적 주입 (verbatim, 요약 금지)
 4. **ArchitectAgent re-run instruction**: "양측 입장의 reasoning trail 을 반영해 redesign 하라. transcript 의 양보 / 반박 / 미해결 disagreement 를 모두 검토 후 새 change-plan / ADR 작성."
